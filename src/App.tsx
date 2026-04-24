@@ -20,12 +20,14 @@ import SellTracker from './components/SellTracker';
 import SettingsTab from './components/Settings';
 import NotebookTab from './components/NotebookTab';
 
+import AppsWiki from './components/AppsWiki';
+
 import InventoryManager from './components/InventoryManager';
 import TabDrawer from './components/TabDrawer';
 import { Menu, ZoomIn, ZoomOut, Maximize } from 'lucide-react';
 import { Agent, CustomerContact, ShopItem, SaleOrder, OrderBatch } from './types';
 
-type Tab = 'formulas' | 'database' | 'calculator' | 'planner' | 'maceration' | 'materials' | 'equipment' | 'prices' | 'feedback' | 'budget' | 'bottling' | 'dilution' | 'contacts' | 'sales' | 'settings' | 'notebooks';
+type Tab = 'formulas' | 'database' | 'calculator' | 'planner' | 'maceration' | 'materials' | 'equipment' | 'prices' | 'feedback' | 'budget' | 'bottling' | 'dilution' | 'contacts' | 'sales' | 'settings' | 'notebooks' | 'apps-wiki';
 
 import { Capacitor } from '@capacitor/core';
 
@@ -615,6 +617,7 @@ export default function App() {
     { id: 'notebooks', label: 'Notebooks', icon: Book },
     { id: 'feedback', label: 'Feedback', icon: MessageSquare },
     { id: 'settings', label: 'Settings', icon: SettingsIcon },
+    { id: 'apps-wiki', label: 'Apps Wiki', icon: Book }
   ] as const;
 
   const themes = [
@@ -774,7 +777,7 @@ export default function App() {
           })}
           <div className="mt-8 pt-8 border-t border-app-border px-4 text-center lg:text-left">
             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-app-muted">
-              Fragrance Planner v1.7.2
+              Fragrance Planner v1.8.0
             </p>
             <p className="text-[9px] font-bold text-app-accent/60 uppercase tracking-widest mt-1">
               Created by Sengeh Fragrance
@@ -921,6 +924,7 @@ export default function App() {
             setCustomers={setCustomers}
             saleOrders={saleOrders}
             fragrances={fragrances}
+            settings={appSettings}
           />
         )}
         {activeTab === 'sales' && (
@@ -945,6 +949,9 @@ export default function App() {
             settings={appSettings} 
             setSettings={setAppSettings} 
           />
+        )}
+        {activeTab === 'apps-wiki' && (
+          <AppsWiki />
         )}
       </main>
       </div>

@@ -249,11 +249,15 @@ export default function FormulaList({ formulas, setFormulas, rawMaterials, setRa
     );
   };
 
+  const displayFormulas = useMemo(() => 
+    isCompareMode ? formulas : formulas.filter(f => !f.parentFormulaId),
+  [formulas, isCompareMode]);
+
   const toggleAllSelection = () => {
-    if (selectedIds.length === formulas.length) {
+    if (selectedIds.length === displayFormulas.length) {
       setSelectedIds([]);
     } else {
-      setSelectedIds(formulas.map(f => f.id));
+      setSelectedIds(displayFormulas.map(f => f.id));
     }
   };
 
@@ -474,17 +478,26 @@ export default function FormulaList({ formulas, setFormulas, rawMaterials, setRa
     }
   };
 
-  const moveFormula = (e: React.MouseEvent, index: number, direction: 'up' | 'down') => {
+  const moveFormula = (e: React.MouseEvent, formulaId: string, direction: 'up' | 'down') => {
     e.stopPropagation();
-    if (direction === 'up' && index === 0) return;
-    if (direction === 'down' && index === formulas.length - 1) return;
+    const displayIndex = displayFormulas.findIndex(f => f.id === formulaId);
+    if (displayIndex === -1) return;
+    if (direction === 'up' && displayIndex === 0) return;
+    if (direction === 'down' && displayIndex === displayFormulas.length - 1) return;
     
-    const newFormulas = [...formulas];
-    const temp = newFormulas[index];
-    newFormulas[index] = newFormulas[index + (direction === 'up' ? -1 : 1)];
-    newFormulas[index + (direction === 'up' ? -1 : 1)] = temp;
-    
-    setFormulas(newFormulas);
+    const targetDisplayIndex = displayIndex + (direction === 'up' ? -1 : 1);
+    const targetFormulaId = displayFormulas[targetDisplayIndex].id;
+
+    const actualIndex1 = formulas.findIndex(f => f.id === formulaId);
+    const actualIndex2 = formulas.findIndex(f => f.id === targetFormulaId);
+
+    if (actualIndex1 !== -1 && actualIndex2 !== -1) {
+      const newFormulas = [...formulas];
+      const temp = newFormulas[actualIndex1];
+      newFormulas[actualIndex1] = newFormulas[actualIndex2];
+      newFormulas[actualIndex2] = temp;
+      setFormulas(newFormulas);
+    }
   };
 
   const getTypes = (m: RawMaterial) => m.types?.length ? m.types : (m.type ? [m.type] : ['raw_material']);
@@ -1611,7 +1624,7 @@ if (viewState === 'compare' && compareIds.length === 2) {
                   {!isCompareMode && (
                     <input 
                       type="checkbox" 
-                      checked={formulas.length > 0 && selectedIds.length === formulas.length}
+                      checked={displayFormulas.length > 0 && selectedIds.length === displayFormulas.length}
                       onChange={toggleAllSelection}
                       className="rounded border-app-border text-app-accent focus:ring-app-accent"
                     />
@@ -1626,14 +1639,14 @@ if (viewState === 'compare' && compareIds.length === 2) {
             </tr>
           </thead>
           <tbody className="divide-y divide-app-border">
-            {formulas.length === 0 ? (
+            {displayFormulas.length === 0 ? (
               <tr>
                 <td colSpan={isSelectionMode ? 6 : 5} className="py-8 text-center text-app-muted italic">
                   No formulas yet. Create one to get started.
                 </td>
               </tr>
             ) : (
-              formulas.map((formula, index) => {
+              displayFormulas.map((formula, index) => {
                 const oilsTotal = (formula.fragranceOils || []).reduce((sum, o) => sum + (Number(o.percentage) || 0), 0);
                 const materialsTotal = (formula.materials || []).reduce((sum, m) => sum + (Number(m.percentage) || 0), 0);
                 const totalActive = oilsTotal + materialsTotal;
@@ -1666,15 +1679,15 @@ if (viewState === 'compare' && compareIds.length === 2) {
                     <td className="py-4 px-4 w-16" onClick={(e) => e.stopPropagation()}>
                       <div className="flex flex-col items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button 
-                          onClick={(e) => moveFormula(e, index, 'up')}
+                          onClick={(e) => moveFormula(e, formula.id, 'up')}
                           disabled={index === 0}
                           className="p-1 text-app-muted hover:text-app-accent disabled:opacity-30 hover:bg-app-accent/10 rounded"
                         >
                           <ArrowUp size={14} />
                         </button>
                         <button 
-                          onClick={(e) => moveFormula(e, index, 'down')}
-                          disabled={index === formulas.length - 1}
+                          onClick={(e) => moveFormula(e, formula.id, 'down')}
+                          disabled={index === displayFormulas.length - 1}
                           className="p-1 text-app-muted hover:text-app-accent disabled:opacity-30 hover:bg-app-accent/10 rounded"
                         >
                           <ArrowDown size={14} />

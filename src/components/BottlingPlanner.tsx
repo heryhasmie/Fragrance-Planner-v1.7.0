@@ -904,9 +904,9 @@ export default function BottlingPlanner({
                   </div>
 
                   {/* Row 2: Bottle Selection, Capacity, Quantity, Price, Other Costs */}
-                  <div className="grid grid-cols-2 md:grid-cols-6 gap-4 items-start">
-                    <div className="col-span-2 md:col-span-1">
-                      <label className="block text-[10px] font-bold text-app-muted mb-1 uppercase tracking-wider">Bottle (Equipment)</label>
+                  <div className="grid grid-cols-2 md:grid-cols-6 gap-4 items-start relative pb-4 md:pb-0">
+                    <div className="col-span-2 md:col-span-2 relative">
+                      <label className="block text-[10px] font-bold text-app-muted mb-1 uppercase tracking-wider h-[15px]">Bottle (Equipment)</label>
                       <select
                         value={bottle.equipmentId || ''}
                         onChange={(e) => {
@@ -930,13 +930,13 @@ export default function BottlingPlanner({
                         ))}
                       </select>
                       {eqStatus && (
-                        <div className={`text-[10px] mt-1 pr-1 font-medium ${maxAllowed !== undefined && maxAllowed < bottle.count ? 'text-red-500' : 'text-app-muted'}`}>
+                        <div className={`absolute top-full left-0 mt-1 text-[10px] pr-1 font-medium whitespace-nowrap ${maxAllowed !== undefined && maxAllowed < bottle.count ? 'text-red-500' : 'text-app-muted'}`}>
                           Inv: {eqStatus.available} | Left: {Math.max(0, (maxAllowed || 0) - bottle.count)}
                         </div>
                       )}
                     </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-app-muted mb-1 uppercase tracking-wider">Capacity (ml)</label>
+                    <div className="md:col-span-1">
+                      <label className="block text-[10px] font-bold text-app-muted mb-1 uppercase tracking-wider h-[15px] truncate">Capacity (ml)</label>
                       <input 
                         type="number"
                         min="1"
@@ -945,11 +945,11 @@ export default function BottlingPlanner({
                         className="w-full text-sm bg-app-card border-app-border rounded-md text-app-text focus:ring-app-accent"
                       />
                     </div>
-                    <div>
-                      <div className="flex justify-between">
-                        <label className="block text-[10px] font-bold text-app-muted mb-1 uppercase tracking-wider">Quantity</label>
+                    <div className="md:col-span-1">
+                      <div className="flex items-center justify-between mb-1 h-[15px]">
+                        <label className="block text-[10px] font-bold text-app-muted uppercase tracking-wider truncate">Quantity</label>
                         {maxAllowed !== undefined && (
-                          <span className="text-[10px] text-app-muted font-bold">Max: {maxAllowed}</span>
+                          <span className="text-[9px] text-app-muted font-bold whitespace-nowrap ml-1">Max: {maxAllowed}</span>
                         )}
                       </div>
                       <input 
@@ -977,8 +977,8 @@ export default function BottlingPlanner({
                         }`}
                       />
                     </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-app-muted mb-1 uppercase tracking-wider">Sell Price ({settings.targetCurrency})</label>
+                    <div className="md:col-span-1">
+                      <label className="block text-[10px] font-bold text-app-muted mb-1 uppercase tracking-wider h-[15px] truncate">Sell {settings.targetCurrency}</label>
                       <input 
                         type="text"
                         value={bottle.sellingPrice === undefined ? '' : bottle.sellingPrice}
@@ -994,8 +994,8 @@ export default function BottlingPlanner({
                         className="w-full text-sm bg-app-card border-app-border rounded-md text-app-text focus:ring-app-accent px-3"
                       />
                     </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-app-muted mb-1 uppercase tracking-wider">Other Costs ({settings.targetCurrency})</label>
+                    <div className="md:col-span-1">
+                      <label className="block text-[10px] font-bold text-app-muted mb-1 uppercase tracking-wider h-[15px] truncate">Costs {settings.targetCurrency}</label>
                       <input 
                         type="text"
                         value={bottle.otherCostsPerBottle === undefined ? '' : bottle.otherCostsPerBottle}
@@ -1011,16 +1011,16 @@ export default function BottlingPlanner({
                         className="w-full text-sm bg-app-card border-app-border rounded-md text-app-text focus:ring-app-accent px-3"
                       />
                     </div>
-                    <div className="flex items-center justify-between gap-2 mt-4 md:mt-0">
-                      <div className="flex-1 text-right">
-                        <label className="block text-[10px] font-bold text-app-muted mb-1 uppercase tracking-wider">Subtotal</label>
-                        <div className="text-sm font-bold text-app-text h-9 flex items-center justify-end">
+                    <div className="col-span-2 md:col-span-6 flex justify-end gap-3 mt-2 md:mt-2 border-t border-app-border pt-3">
+                      <div className="text-right flex items-center gap-3">
+                        <label className="text-[10px] font-bold text-app-muted uppercase tracking-wider">Subtotal</label>
+                        <div className="text-sm font-bold text-app-text">
                           {(bottle.capacityMl * bottle.count).toLocaleString()} ml
                         </div>
                       </div>
                       <button 
                         onClick={() => removeBottle(bottle.id)}
-                        className="p-2 text-red-400 hover:text-red-600 hover:bg-red-500/10 rounded-md transition-all self-end mb-0.5"
+                        className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-500/10 rounded-md transition-all"
                       >
                         <Trash2 size={16} />
                       </button>

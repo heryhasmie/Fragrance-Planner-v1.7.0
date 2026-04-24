@@ -17,6 +17,24 @@ interface NotebookCanvasProps {
   equipments: Equipment[];
 }
 
+const getContrastColor = (hexColor: string) => {
+  if (!hexColor || hexColor === '#currentColor' || hexColor === 'transparent') return 'text-black dark:text-white';
+  const hex = hexColor.replace('#', '');
+  if (hex.length !== 6 && hex.length !== 3) return 'text-black dark:text-white';
+  let r, g, b;
+  if (hex.length === 3) {
+    r = parseInt(hex.charAt(0) + hex.charAt(0), 16);
+    g = parseInt(hex.charAt(1) + hex.charAt(1), 16);
+    b = parseInt(hex.charAt(2) + hex.charAt(2), 16);
+  } else {
+    r = parseInt(hex.substr(0, 2), 16);
+    g = parseInt(hex.substr(2, 2), 16);
+    b = parseInt(hex.substr(4, 2), 16);
+  }
+  const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
+  return yiq >= 128 ? 'text-black' : 'text-white';
+};
+
 export default function NotebookCanvas({
   notebook,
   updateNotebook,
@@ -502,13 +520,13 @@ export default function NotebookCanvas({
           style={{ ...wrapperProps.style, fontFamily: '"Courier New", Courier, monospace', height: tEl.height || 100, backgroundColor: tEl.color, opacity: tEl.opacity ?? 1 }}>
            <div className="absolute inset-0 p-4 w-full h-full">
              {!isEditing && (
-               <div className="w-full h-full whitespace-pre-wrap text-sm text-yellow-900 dark:text-yellow-100 overflow-hidden break-words cursor-text"
+               <div className={`w-full h-full whitespace-pre-wrap overflow-hidden break-words cursor-text font-[inherit] ${getContrastColor(tEl.color || '#FEFCE8')}`}
                  onDoubleClick={() => !isGrouped && setEditingElementId(el.id)}>
                  {tEl.content || <span className="opacity-40 italic">Double click to edit...</span>}
                </div>
              )}
              {isEditing && !isGrouped && (
-               <textarea autoFocus className="w-full h-full bg-transparent resize-none outline-none text-sm text-yellow-900 dark:text-yellow-100 font-[inherit]"
+               <textarea autoFocus className={`w-full h-full bg-transparent resize-none outline-none font-[inherit] ${getContrastColor(tEl.color || '#FEFCE8')}`}
                  value={tEl.content} onChange={(e) => updateElement(el.id, { content: e.target.value })} onBlur={() => setEditingElementId(null)} />
              )}
            </div>

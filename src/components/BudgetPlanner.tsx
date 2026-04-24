@@ -358,10 +358,26 @@ export default function BudgetPlanner({
     });
   };
 
+  const calculateItemBase = (item: BudgetItem) => {
+    return item.quantity * item.unitPrice;
+  };
+
+  const calculateItemDiscount = (item: BudgetItem) => {
+    return calculateItemBase(item) * (item.discountPercentage / 100);
+  };
+
   const calculateItemTotal = (item: BudgetItem) => {
-    const subtotal = item.quantity * item.unitPrice;
-    const discount = subtotal * (item.discountPercentage / 100);
-    return subtotal - discount;
+    return calculateItemBase(item) - calculateItemDiscount(item);
+  };
+
+  const calculateCategoryDiscount = (plan: BudgetPlan, category: BudgetItem['category']) => {
+    return plan.items
+      .filter(item => item.category === category)
+      .reduce((sum, item) => sum + calculateItemDiscount(item), 0);
+  };
+
+  const calculateTotalDiscount = (plan: BudgetPlan) => {
+    return plan.items.reduce((sum, item) => sum + calculateItemDiscount(item), 0);
   };
 
   const calculateCategoryTotal = (plan: BudgetPlan, category: BudgetItem['category']) => {
@@ -394,6 +410,8 @@ export default function BudgetPlanner({
   ) => {
     if (!activePlan) return null;
     const items = activePlan.items.filter(item => item.category === category);
+    const categoryDiscount = calculateCategoryDiscount(activePlan, category);
+    const categoryTotal = calculateCategoryTotal(activePlan, category);
     
     return (
       <div className={`rounded-xl border shadow-sm overflow-hidden mb-6 ${bgClass}`}>
@@ -404,8 +422,20 @@ export default function BudgetPlanner({
             </div>
             <h3 className="font-bold text-app-text">{title}</h3>
           </div>
-          <div className="text-sm font-bold text-app-text">
-            {settings.currencySymbol} {calculateCategoryTotal(activePlan, category).toFixed(2)}
+          <div className="text-right">
+            {categoryDiscount > 0 && (
+              <div className="text-[10px] line-through text-app-muted mr-1 inline-block">
+                {settings.currencySymbol} {(categoryTotal + categoryDiscount).toFixed(2)}
+              </div>
+            )}
+            <div className="text-sm font-bold text-app-text inline-block">
+              {settings.currencySymbol} {categoryTotal.toFixed(2)}
+            </div>
+            {categoryDiscount > 0 && (
+              <div className="text-[10px] text-emerald-500 font-medium">
+                Saved {settings.currencySymbol} {categoryDiscount.toFixed(2)}
+              </div>
+            )}
           </div>
         </div>
         
@@ -618,8 +648,15 @@ export default function BudgetPlanner({
                   <div className="flex items-center gap-4">
                     <div className="text-right">
                       <label className="block text-[10px] font-medium text-app-muted mb-0.5">Total</label>
-                      <div className="text-sm font-semibold text-app-text">
-                        {calculateItemTotal(item).toFixed(2)}
+                      <div className="flex flex-col items-end">
+                        {calculateItemDiscount(item) > 0 && (
+                          <div className="text-[10px] line-through text-app-muted">
+                            {(item.quantity * item.unitPrice).toFixed(2)}
+                          </div>
+                        )}
+                        <div className="text-sm font-semibold text-app-text">
+                          {calculateItemTotal(item).toFixed(2)}
+                        </div>
                       </div>
                     </div>
                     
@@ -860,9 +897,20 @@ export default function BudgetPlanner({
                 </div>
                 
                 <div className="pt-3 mt-3 border-t border-app-border">
+                  {calculateTotalDiscount(activePlan) > 0 && (
+                    <div className="flex justify-between items-center text-sm font-medium text-emerald-500 mb-2">
+                      <span>Total Savings</span>
+                      <span>-{settings.currencySymbol} {calculateTotalDiscount(activePlan).toFixed(2)}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between items-center font-bold text-lg text-app-text">
                     <span>Total Cost</span>
                     <div className="text-right">
+                      {calculateTotalDiscount(activePlan) > 0 && (
+                        <div className="text-xs line-through text-app-muted">
+                          {settings.currencySymbol} {(calculateGrandTotal(activePlan) + calculateTotalDiscount(activePlan)).toFixed(2)}
+                        </div>
+                      )}
                       <span className="text-app-accent font-black text-xl">{settings.currencySymbol} {calculateGrandTotal(activePlan).toFixed(2)}</span>
                       <p className="text-[10px] text-app-muted font-bold uppercase">Estimating in {settings.targetCurrency}</p>
                     </div>

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Users, UserCircle, Briefcase, Tag, Phone, Mail, MapPin, CreditCard, TrendingUp, Plus, Edit2, Trash2, ChevronLeft, Save, X, Share, HelpCircle, Package } from 'lucide-react';
-import { Agent, CustomerContact, SaleOrder, Fragrance } from '../types';
+import { Agent, CustomerContact, SaleOrder, Fragrance, AppSettings } from '../types';
 import { useConfirm } from '../hooks/useConfirm';
 import { Capacitor } from '@capacitor/core';
 import TutorialModal from './TutorialModal';
@@ -12,9 +12,10 @@ interface AgentContactManagerProps {
   setCustomers: (customers: CustomerContact[]) => void;
   saleOrders?: SaleOrder[];
   fragrances?: Fragrance[];
+  settings?: AppSettings;
 }
 
-export default function AgentContactManager({ agents, setAgents, customers, setCustomers, saleOrders = [], fragrances = [] }: AgentContactManagerProps) {
+export default function AgentContactManager({ agents, setAgents, customers, setCustomers, saleOrders = [], fragrances = [], settings }: AgentContactManagerProps) {
   const [activeTab, setActiveTab] = useState<'agents' | 'customers'>('agents');
   const [viewState, setViewState] = useState<'list' | 'edit' | 'view'>('list');
   const [editingAgent, setEditingAgent] = useState<Agent | null>(null);
@@ -441,7 +442,9 @@ export default function AgentContactManager({ agents, setAgents, customers, setC
                              <TrendingUp size={20} />
                            </div>
                            <p className="text-[10px] font-bold text-app-muted uppercase tracking-widest">Total Sales</p>
-                           <p className="font-black text-xl text-app-text mt-1">{totalSales.toFixed(2)}</p>
+                           <p className="font-black text-xl text-app-text mt-1">
+                             {settings?.currencySymbol || ''} {totalSales.toFixed(2)}
+                           </p>
                            <p className="text-xs text-app-muted mt-1">{agentOrders.length} Orders</p>
                         </div>
                         <div className="bg-app-bg border border-app-border rounded-xl p-4 flex flex-col items-center justify-center text-center">
@@ -457,7 +460,9 @@ export default function AgentContactManager({ agents, setAgents, customers, setC
                              <CreditCard size={20} />
                            </div>
                            <p className="text-[10px] font-bold text-app-muted uppercase tracking-widest">Est. Earnings</p>
-                           <p className="font-black text-xl text-app-text mt-1">{totalCommissions.toFixed(2)}</p>
+                           <p className="font-black text-xl text-app-text mt-1">
+                             {settings?.currencySymbol || ''} {totalCommissions.toFixed(2)}
+                           </p>
                            <p className="text-xs text-app-muted mt-1">Total Commissions</p>
                         </div>
                       </div>
@@ -610,7 +615,9 @@ export default function AgentContactManager({ agents, setAgents, customers, setC
                              <TrendingUp size={20} />
                            </div>
                            <p className="text-[10px] font-bold text-app-muted uppercase tracking-widest">Total Spent</p>
-                           <p className="font-black text-xl text-app-text mt-1">{totalSpent.toFixed(2)}</p>
+                           <p className="font-black text-xl text-app-text mt-1">
+                             {settings?.currencySymbol || ''} {totalSpent.toFixed(2)}
+                           </p>
                            <p className="text-xs text-app-muted mt-1">{customerOrders.length} Orders</p>
                         </div>
                         <div className="bg-app-bg border border-app-border rounded-xl p-4 flex flex-col items-center justify-center text-center">
