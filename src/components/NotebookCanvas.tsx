@@ -651,8 +651,8 @@ export default function NotebookCanvas({
   return (
     <div className="flex flex-col h-[calc(100vh-120px)] animate-in fade-in duration-500">
       {/* Toolbar */}
-      <div className="flex items-center justify-between mb-4 bg-app-card p-3 rounded-xl border border-app-border shadow-sm">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between mb-4 bg-app-card p-3 rounded-xl border border-app-border shadow-sm overflow-x-auto gap-4 custom-scrollbar">
+        <div className="flex items-center gap-2 shrink-0">
            <button onClick={onBack} className="p-2 mr-2 rounded-lg text-app-muted hover:text-app-text hover:bg-app-bg transition-colors" title="Back to notebook">
              <ChevronLeft size={20} />
            </button>
@@ -692,7 +692,7 @@ export default function NotebookCanvas({
              </div>
            )}
 
-           <div className="flex items-center gap-2 relative">
+           <div className="flex items-center gap-2 relative shrink-0">
              <input type="color" value={currentColor === '#currentColor' ? '#FEFCE8' : currentColor} 
                onChange={(e) => {
                   const newColor = e.target.value;
@@ -734,7 +734,7 @@ export default function NotebookCanvas({
            </div>
         </div>
         
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0 ml-auto">
           {selectedIds.length > 0 ? (
             <AnimatePresence>
               <motion.div 

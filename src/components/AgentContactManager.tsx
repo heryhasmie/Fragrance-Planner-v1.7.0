@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Users, UserCircle, Briefcase, Tag, Phone, Mail, MapPin, CreditCard, TrendingUp, Plus, Edit2, Trash2, ChevronLeft, Save, X, Share, HelpCircle } from 'lucide-react';
-import { Agent, CustomerContact } from '../types';
+import { Users, UserCircle, Briefcase, Tag, Phone, Mail, MapPin, CreditCard, TrendingUp, Plus, Edit2, Trash2, ChevronLeft, Save, X, Share, HelpCircle, Package } from 'lucide-react';
+import { Agent, CustomerContact, SaleOrder, Fragrance } from '../types';
 import { useConfirm } from '../hooks/useConfirm';
 import { Capacitor } from '@capacitor/core';
 import TutorialModal from './TutorialModal';
@@ -10,9 +10,11 @@ interface AgentContactManagerProps {
   setAgents: (agents: Agent[]) => void;
   customers: CustomerContact[];
   setCustomers: (customers: CustomerContact[]) => void;
+  saleOrders?: SaleOrder[];
+  fragrances?: Fragrance[];
 }
 
-export default function AgentContactManager({ agents, setAgents, customers, setCustomers }: AgentContactManagerProps) {
+export default function AgentContactManager({ agents, setAgents, customers, setCustomers, saleOrders = [], fragrances = [] }: AgentContactManagerProps) {
   const [activeTab, setActiveTab] = useState<'agents' | 'customers'>('agents');
   const [viewState, setViewState] = useState<'list' | 'edit' | 'view'>('list');
   const [editingAgent, setEditingAgent] = useState<Agent | null>(null);
@@ -27,8 +29,18 @@ export default function AgentContactManager({ agents, setAgents, customers, setC
   const tagInputRef = useRef<HTMLInputElement>(null);
   const { confirm, ConfirmModal } = useConfirm();
 
-  // Extract all unique styles from existing customers for suggestions
-  const allStyles = Array.from(new Set(customers.flatMap(c => c.styles || []))).sort();
+  // Extract all unique styles from existing customers and fragraces for suggestions
+  const allStyles = Array.from(new Set([
+    ...customers.flatMap(c => c.styles || []),
+    ...(fragrances || []).flatMap(f => [
+      ...(f.perfumeType || []),
+      ...(f.topNotes || []),
+      ...(f.heartNotes || []),
+      ...(f.baseNotes || []),
+      ...(f.tags || []),
+      ...(f.occasions || [])
+    ])
+  ])).filter(Boolean).sort();
   const filteredStyles = allStyles.filter(s => s.toLowerCase().includes(tagInput.toLowerCase()) && !(editingCustomer?.styles || []).includes(s));
 
   const handleAddAgent = () => {
@@ -412,11 +424,51 @@ export default function AgentContactManager({ agents, setAgents, customers, setC
                     <TrendingUp className="text-emerald-500" />
                     Sales Records
                   </h3>
-                  <div className="bg-app-bg/50 border border-app-border border-dashed rounded-xl p-8 text-center">
-                    <TrendingUp className="mx-auto h-10 w-10 text-app-muted mb-3 opacity-50" />
-                    <p className="text-app-text font-medium">Sales Tracker Integration Coming Soon</p>
-                    <p className="text-sm text-app-muted mt-1">In v1.3.0, you will be able to track total sales, types sold, and view monthly/weekly reports directly from this agent profile.</p>
-                  </div>
+                  {(() => {
+                    const agentOrders = saleOrders.filter(o => o.agentId === selectedAgent.id && o.status !== 'cancelled');
+                    const totalSales = agentOrders.reduce((sum, o) => sum + o.totalAmount, 0);
+                    const totalItemsSold = agentOrders.reduce((sum, o) => sum + o.items.reduce((itemSum, item) => itemSum + item.quantity, 0), 0);
+                    const totalCommissions = agentOrders.reduce((sum, o) => {
+                       if (o.commissionType === 'fixed') return sum + (o.commissionValue || 0);
+                       const base = o.totalAmount + (o.discountValue || 0); // Calculate on gross before discount? Or net? Assuming gross for simple. Actually net usually.
+                       return sum + ((o.totalAmount * (o.commissionValue || 0)) / 100);
+                    }, 0);
+
+                    return agentOrders.length > 0 ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div className="bg-app-bg border border-app-border rounded-xl p-4 flex flex-col items-center justify-center text-center">
+                           <div className="p-2 bg-emerald-500/10 text-emerald-500 rounded-full mb-2">
+                             <TrendingUp size={20} />
+                           </div>
+                           <p className="text-[10px] font-bold text-app-muted uppercase tracking-widest">Total Sales</p>
+                           <p className="font-black text-xl text-app-text mt-1">{totalSales.toFixed(2)}</p>
+                           <p className="text-xs text-app-muted mt-1">{agentOrders.length} Orders</p>
+                        </div>
+                        <div className="bg-app-bg border border-app-border rounded-xl p-4 flex flex-col items-center justify-center text-center">
+                           <div className="p-2 bg-blue-500/10 text-blue-500 rounded-full mb-2">
+                             <Package size={20} />
+                           </div>
+                           <p className="text-[10px] font-bold text-app-muted uppercase tracking-widest">Items Sold</p>
+                           <p className="font-black text-xl text-app-text mt-1">{totalItemsSold}</p>
+                           <p className="text-xs text-app-muted mt-1">Units Distributed</p>
+                        </div>
+                        <div className="bg-app-bg border border-app-border rounded-xl p-4 flex flex-col items-center justify-center text-center">
+                           <div className="p-2 bg-app-accent/10 text-app-accent rounded-full mb-2">
+                             <CreditCard size={20} />
+                           </div>
+                           <p className="text-[10px] font-bold text-app-muted uppercase tracking-widest">Est. Earnings</p>
+                           <p className="font-black text-xl text-app-text mt-1">{totalCommissions.toFixed(2)}</p>
+                           <p className="text-xs text-app-muted mt-1">Total Commissions</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="bg-app-bg/50 border border-app-border border-dashed rounded-xl p-8 text-center">
+                        <TrendingUp className="mx-auto h-10 w-10 text-app-muted mb-3 opacity-50" />
+                        <p className="text-app-text font-medium">No sales recorded yet</p>
+                        <p className="text-sm text-app-muted mt-1">When this agent makes sales in the Sell Tracker, their stats will appear here.</p>
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
             </div>
@@ -546,11 +598,38 @@ export default function AgentContactManager({ agents, setAgents, customers, setC
                     <TrendingUp className="text-emerald-500" />
                     Buy Records
                   </h3>
-                  <div className="bg-app-bg/50 border border-app-border border-dashed rounded-xl p-8 text-center">
-                    <TrendingUp className="mx-auto h-10 w-10 text-app-muted mb-3 opacity-50" />
-                    <p className="text-app-text font-medium">Sales Tracker Integration Coming Soon</p>
-                    <p className="text-sm text-app-muted mt-1">In v1.3.0, you will be able to track this customer's purchase history, favorite products, and total spent.</p>
-                  </div>
+                  {(() => {
+                    const customerOrders = saleOrders.filter(o => o.customerId === selectedCustomer.id && o.status !== 'cancelled');
+                    const totalSpent = customerOrders.reduce((sum, o) => sum + o.totalAmount, 0);
+                    const totalItemsBought = customerOrders.reduce((sum, o) => sum + o.items.reduce((itemSum, item) => itemSum + item.quantity, 0), 0);
+
+                    return customerOrders.length > 0 ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="bg-app-bg border border-app-border rounded-xl p-4 flex flex-col items-center justify-center text-center">
+                           <div className="p-2 bg-emerald-500/10 text-emerald-500 rounded-full mb-2">
+                             <TrendingUp size={20} />
+                           </div>
+                           <p className="text-[10px] font-bold text-app-muted uppercase tracking-widest">Total Spent</p>
+                           <p className="font-black text-xl text-app-text mt-1">{totalSpent.toFixed(2)}</p>
+                           <p className="text-xs text-app-muted mt-1">{customerOrders.length} Orders</p>
+                        </div>
+                        <div className="bg-app-bg border border-app-border rounded-xl p-4 flex flex-col items-center justify-center text-center">
+                           <div className="p-2 bg-blue-500/10 text-blue-500 rounded-full mb-2">
+                             <Package size={20} />
+                           </div>
+                           <p className="text-[10px] font-bold text-app-muted uppercase tracking-widest">Items Bought</p>
+                           <p className="font-black text-xl text-app-text mt-1">{totalItemsBought}</p>
+                           <p className="text-xs text-app-muted mt-1">Total Products</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="bg-app-bg/50 border border-app-border border-dashed rounded-xl p-8 text-center">
+                        <TrendingUp className="mx-auto h-10 w-10 text-app-muted mb-3 opacity-50" />
+                        <p className="text-app-text font-medium">No purchase history yet</p>
+                        <p className="text-sm text-app-muted mt-1">When this customer makes a purchase in the Sell Tracker, it will appear here.</p>
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
             </div>
@@ -683,19 +762,6 @@ export default function AgentContactManager({ agents, setAgents, customers, setC
               </div>
             </div>
 
-            {/* Placeholder for future Sells Tracker integration */}
-            <div className="mt-8 pt-6 border-t border-app-border">
-              <h3 className="text-lg font-bold text-app-text mb-4 flex items-center gap-2">
-                <TrendingUp className="text-emerald-500" />
-                Sales Records
-              </h3>
-              <div className="bg-app-bg/50 border border-app-border border-dashed rounded-xl p-8 text-center">
-                <TrendingUp className="mx-auto h-10 w-10 text-app-muted mb-3 opacity-50" />
-                <p className="text-app-text font-medium">Sales Tracker Integration Coming Soon</p>
-                <p className="text-sm text-app-muted mt-1">In v1.3.0, you will be able to track total sales, types sold, and view monthly/weekly reports directly from this agent profile.</p>
-              </div>
-            </div>
-
             <div className="flex justify-end gap-3 pt-6 border-t border-app-border">
               <button
                 onClick={() => setViewState('list')}
@@ -799,7 +865,7 @@ export default function AgentContactManager({ agents, setAgents, customers, setC
                         className="flex-1 min-w-[120px] outline-none text-sm bg-transparent text-app-text placeholder:text-app-muted"
                       />
                     </div>
-                    {showTagSuggestions && tagInput && filteredStyles.length > 0 && (
+                    {showTagSuggestions && filteredStyles.length > 0 && (
                       <ul className="absolute z-10 w-full mt-1 bg-app-card border border-app-border rounded-md shadow-lg max-h-40 overflow-y-auto">
                         {filteredStyles.map(s => (
                           <li 
@@ -875,19 +941,6 @@ export default function AgentContactManager({ agents, setAgents, customers, setC
                     placeholder="Additional details..."
                   />
                 </div>
-              </div>
-            </div>
-
-            {/* Placeholder for future Sells Tracker integration */}
-            <div className="mt-8 pt-6 border-t border-app-border">
-              <h3 className="text-lg font-bold text-app-text mb-4 flex items-center gap-2">
-                <TrendingUp className="text-emerald-500" />
-                Buy Records
-              </h3>
-              <div className="bg-app-bg/50 border border-app-border border-dashed rounded-xl p-8 text-center">
-                <TrendingUp className="mx-auto h-10 w-10 text-app-muted mb-3 opacity-50" />
-                <p className="text-app-text font-medium">Sales Tracker Integration Coming Soon</p>
-                <p className="text-sm text-app-muted mt-1">In v1.3.0, you will be able to track this customer's purchase history, favorite products, and total spent.</p>
               </div>
             </div>
 

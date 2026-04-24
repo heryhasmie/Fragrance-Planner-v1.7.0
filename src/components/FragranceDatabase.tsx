@@ -838,6 +838,36 @@ export default function FragranceDatabase({ fragrances, setFragrances, userTheme
               </div>
             </div>
 
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-app-text mb-2">Perfume Occasion</label>
+              <div className="flex flex-wrap gap-2">
+                {['Work / Office', 'Date Night', 'Formal Event', 'Indoor', 'Outdoor', 'Sport', 'Versatile', 'Casual'].map((occasion) => {
+                  const isSelected = currentFragrance.occasions?.includes(occasion);
+                  return (
+                    <button
+                      key={occasion}
+                      type="button"
+                      onClick={() => {
+                        const occasionsList = currentFragrance.occasions || [];
+                        if (isSelected) {
+                          setCurrentFragrance({ ...currentFragrance, occasions: occasionsList.filter(o => o !== occasion) });
+                        } else {
+                          setCurrentFragrance({ ...currentFragrance, occasions: [...occasionsList, occasion] });
+                        }
+                      }}
+                      className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-colors ${
+                        isSelected 
+                          ? 'bg-app-accent text-white border-app-accent' 
+                          : 'bg-app-bg text-app-muted border-app-border hover:border-app-accent/50 hover:text-app-text'
+                      }`}
+                    >
+                      {occasion}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             <div className="md:col-span-2 space-y-4">
               <h4 className="font-medium text-app-text border-b border-app-border pb-2">Notes & Tags</h4>
               
@@ -1011,6 +1041,25 @@ export default function FragranceDatabase({ fragrances, setFragrances, userTheme
               <div>
                 <p className={`text-sm font-medium ${!isCustom ? theme.subText : ''} uppercase tracking-wider`} style={subTextStyle}>Maceration Period</p>
                 <p className={`mt-1 text-lg font-semibold ${!isCustom ? theme.text : ''}`} style={textStyle}>{selectedFragrance.macerationPeriodWeeks ? `${selectedFragrance.macerationPeriodWeeks} Weeks` : '—'}</p>
+              </div>
+              <div className="md:col-span-3">
+                <p className={`text-sm font-medium ${!isCustom ? theme.subText : ''} uppercase tracking-wider`} style={subTextStyle}>Perfume Occasion</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {selectedFragrance.occasions?.length ? (
+                    selectedFragrance.occasions.map((occasion) => (
+                      <span 
+                        key={occasion} 
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold shadow-sm border transition-transform hover:scale-105 ${!isCustom ? `${theme.tagBg} ${theme.tagText} ${theme.border}` : ''}`} 
+                        style={tagStyle}
+                      >
+                        <Sparkles size={12} className="opacity-70" />
+                        {occasion}
+                      </span>
+                    ))
+                  ) : (
+                    <span className={`text-lg font-semibold ${!isCustom ? theme.text : ''}`} style={textStyle}>—</span>
+                  )}
+                </div>
               </div>
             </div>
           </div>

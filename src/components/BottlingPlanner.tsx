@@ -141,6 +141,40 @@ export default function BottlingPlanner({
     return status;
   }, [availableVolumeByFragrance, requiredVolumeByFragrance]);
 
+  const equipmentStatus = useMemo(() => {
+    const status: Record<string, { available: number; required: number; difference: number; isEnough: boolean; name: string }> = {};
+    
+    if (!activePlan) return status;
+
+    activePlan.bottles.forEach(bottle => {
+      if (!bottle.equipmentId) return;
+      
+      const req = bottle.count;
+      if (status[bottle.equipmentId]) {
+        status[bottle.equipmentId].required += req;
+      } else {
+        const eq = equipments.find(e => e.id === bottle.equipmentId);
+        const name = eq ? `${eq.name} (${eq.size})` : 'Unknown Bottle';
+        const invItem = inventory.find(i => i.itemType === 'equipment' && i.itemId === bottle.equipmentId);
+        const available = invItem ? invItem.totalAmount : 0;
+        status[bottle.equipmentId] = {
+          name,
+          available,
+          required: req,
+          difference: 0,
+          isEnough: false
+        };
+      }
+    });
+
+    Object.keys(status).forEach(id => {
+      status[id].difference = status[id].available - status[id].required;
+      status[id].isEnough = status[id].difference >= 0;
+    });
+
+    return status;
+  }, [activePlan, inventory, equipments]);
+
   const totalAvailableVolume = useMemo(() => {
     return (Object.values(availableVolumeByFragrance) as number[]).reduce((sum, v) => sum + v, 0);
   }, [availableVolumeByFragrance]);
@@ -150,8 +184,10 @@ export default function BottlingPlanner({
   }, [requiredVolumeByFragrance]);
 
   const isOverallEnough = useMemo(() => {
-    return (Object.values(fragranceStatus) as { isEnough: boolean }[]).every(s => s.isEnough);
-  }, [fragranceStatus]);
+    const isFragranceEnough = (Object.values(fragranceStatus) as { isEnough: boolean }[]).every(s => s.isEnough);
+    const isEquipmentEnough = (Object.values(equipmentStatus) as { isEnough: boolean }[]).every(s => s.isEnough);
+    return isFragranceEnough && isEquipmentEnough;
+  }, [fragranceStatus, equipmentStatus]);
 
   const volumeDifference = totalAvailableVolume - totalRequiredVolume;
   const isEnough = isOverallEnough;
@@ -391,7 +427,11 @@ export default function BottlingPlanner({
   const commitBottlingToInventory = (plan: BottlingPlan) => {
     if (!setInventory || !inventory) return;
 
-    confirm('Update Inventory', 'This will deduct bulk fragrance and bottles from inventory, and add the finished products. Continue?', () => {
+    const confirmMessage = isEnough 
+      ? 'This will deduct bulk fragrance and bottles from inventory, and add the finished products. Continue?'
+      : 'WARNING: You have insufficient inventory (shortage of bottles or bulk fragrance). Proceeding will deduct whatever is available and may result in negative balances or incomplete deductions. Are you sure you want to proceed?';
+
+    confirm('Update Inventory', confirmMessage, () => {
       let updatedInventory = [...inventory];
 
       // 1. Deduct Blended Oil
@@ -830,7 +870,11 @@ export default function BottlingPlanner({
               </button>
             </div>
             <div className="p-4 space-y-4">
-              {activePlan?.bottles.map((bottle, index) => (
+              {activePlan?.bottles.map((bottle, index) => {
+                const eqStatus = bottle.equipmentId ? equipmentStatus[bottle.equipmentId] : undefined;
+                const maxAllowed = eqStatus ? eqStatus.available - (eqStatus.required - bottle.count) : undefined;
+                
+                return (
                 <div key={bottle.id} className="bg-app-bg p-4 rounded-xl border border-app-border group space-y-4">
                   {/* Row 1: Fragrance and Label */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -860,7 +904,7 @@ export default function BottlingPlanner({
                   </div>
 
                   {/* Row 2: Bottle Selection, Capacity, Quantity, Price, Other Costs */}
-                  <div className="grid grid-cols-2 md:grid-cols-6 gap-4 items-end">
+                  <div className="grid grid-cols-2 md:grid-cols-6 gap-4 items-start">
                     <div className="col-span-2 md:col-span-1">
                       <label className="block text-[10px] font-bold text-app-muted mb-1 uppercase tracking-wider">Bottle (Equipment)</label>
                       <select
@@ -868,7 +912,7 @@ export default function BottlingPlanner({
                         onChange={(e) => {
                           const eqId = e.target.value;
                           const eq = equipments.find(item => item.id === eqId);
-                          const updates: Partial<BottleConfig> = { equipmentId: eqId };
+                          const updates: Partial<BottleConfig> = { equipmentId: eqId, count: 1 }; // Reset count to 1 when changing type
                           if (eq) {
                             // Try to extract capacity from size if it's a number
                             const sizeMatch = eq.size.match(/(\d+)/);
@@ -885,6 +929,11 @@ export default function BottlingPlanner({
                           <option key={eq.id} value={eq.id}>{eq.name} ({eq.size})</option>
                         ))}
                       </select>
+                      {eqStatus && (
+                        <div className={`text-[10px] mt-1 pr-1 font-medium ${maxAllowed !== undefined && maxAllowed < bottle.count ? 'text-red-500' : 'text-app-muted'}`}>
+                          Inv: {eqStatus.available} | Left: {Math.max(0, (maxAllowed || 0) - bottle.count)}
+                        </div>
+                      )}
                     </div>
                     <div>
                       <label className="block text-[10px] font-bold text-app-muted mb-1 uppercase tracking-wider">Capacity (ml)</label>
@@ -897,13 +946,35 @@ export default function BottlingPlanner({
                       />
                     </div>
                     <div>
-                      <label className="block text-[10px] font-bold text-app-muted mb-1 uppercase tracking-wider">Quantity</label>
+                      <div className="flex justify-between">
+                        <label className="block text-[10px] font-bold text-app-muted mb-1 uppercase tracking-wider">Quantity</label>
+                        {maxAllowed !== undefined && (
+                          <span className="text-[10px] text-app-muted font-bold">Max: {maxAllowed}</span>
+                        )}
+                      </div>
                       <input 
                         type="number"
                         min="1"
-                        value={bottle.count}
-                        onChange={(e) => updateBottle(bottle.id, { count: Number(e.target.value) || 0 })}
-                        className="w-full text-sm bg-app-card border-app-border rounded-md text-app-text focus:ring-app-accent"
+                        max={maxAllowed !== undefined ? Math.max(1, maxAllowed) : undefined}
+                        value={bottle.count === 0 ? '' : bottle.count}
+                        onChange={(e) => {
+                          const rawVal = e.target.value;
+                          if (rawVal === '') {
+                             updateBottle(bottle.id, { count: 0 });
+                             return;
+                          }
+                          let val = Number(rawVal) || 0;
+                          if (maxAllowed !== undefined && val > maxAllowed) {
+                            val = Math.max(0, maxAllowed);
+                            alert(`Quantity exceeds inventory! Maximum available is ${maxAllowed}.`);
+                          }
+                          updateBottle(bottle.id, { count: val });
+                        }}
+                        className={`w-full text-sm bg-app-card rounded-md focus:ring-app-accent ${
+                          maxAllowed !== undefined && bottle.count > maxAllowed 
+                            ? 'border-red-500 text-red-500 focus:border-red-500' 
+                            : 'border-app-border text-app-text'
+                        }`}
                       />
                     </div>
                     <div>
@@ -940,7 +1011,7 @@ export default function BottlingPlanner({
                         className="w-full text-sm bg-app-card border-app-border rounded-md text-app-text focus:ring-app-accent px-3"
                       />
                     </div>
-                    <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center justify-between gap-2 mt-4 md:mt-0">
                       <div className="flex-1 text-right">
                         <label className="block text-[10px] font-bold text-app-muted mb-1 uppercase tracking-wider">Subtotal</label>
                         <div className="text-sm font-bold text-app-text h-9 flex items-center justify-end">
@@ -949,14 +1020,14 @@ export default function BottlingPlanner({
                       </div>
                       <button 
                         onClick={() => removeBottle(bottle.id)}
-                        className="p-2 text-red-400 hover:text-red-600 hover:bg-red-500/10 rounded-md transition-all mb-0.5"
+                        className="p-2 text-red-400 hover:text-red-600 hover:bg-red-500/10 rounded-md transition-all self-end mb-0.5"
                       >
                         <Trash2 size={16} />
                       </button>
                     </div>
                   </div>
                 </div>
-              ))}
+              )})}
               {activePlan?.bottles.length === 0 && (
                 <div className="text-center py-6 text-app-muted italic text-sm">
                   No bottles configured. Add one to start planning.
@@ -997,7 +1068,33 @@ export default function BottlingPlanner({
                     )}
                   </div>
                 ))}
-                {Object.keys(fragranceStatus).length === 0 && (
+                
+                {Object.keys(equipmentStatus).length > 0 && (
+                  <>
+                    <div className="text-[10px] font-bold text-app-muted uppercase tracking-wider px-1 mt-4">Equipment Breakdown</div>
+                    {(Object.entries(equipmentStatus) as [string, { available: number; required: number; difference: number; isEnough: boolean; name: string }][]).map(([id, status]) => (
+                      <div key={id} className={`p-3 rounded-lg border transition-colors ${status.isEnough ? 'bg-app-bg border-app-border' : 'bg-red-500/5 border-red-500/20'}`}>
+                        <div className="flex justify-between items-start mb-1">
+                          <div className="text-xs font-bold text-app-text truncate mr-2" title={status.name}>{status.name}</div>
+                          <div className={`text-xs font-bold ${status.isEnough ? 'text-emerald-500' : 'text-red-500'}`}>
+                            {status.isEnough ? 'OK' : 'Short'}
+                          </div>
+                        </div>
+                        <div className="flex justify-between text-[10px] text-app-muted">
+                          <span>{status.available.toLocaleString()} units available</span>
+                          <span className={status.isEnough ? '' : 'text-red-400'}>{status.required.toLocaleString()} units req.</span>
+                        </div>
+                        {!status.isEnough && (
+                          <div className="mt-1 text-[10px] font-bold text-red-500">
+                            Need {Math.abs(status.difference).toLocaleString()} more units
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </>
+                )}
+
+                {Object.keys(fragranceStatus).length === 0 && Object.keys(equipmentStatus).length === 0 && (
                   <div className="text-center py-4 text-app-muted italic text-xs">
                     Select batches and configure bottles to see analysis.
                   </div>
@@ -1216,13 +1313,21 @@ export default function BottlingPlanner({
               </div>
 
               {!activePlan.isCommittedToInventory ? (
-                <button
-                  onClick={() => commitBottlingToInventory(activePlan)}
-                  className="w-full py-4 bg-app-accent text-white rounded-xl font-bold hover:bg-app-accent-hover transition-all shadow-lg shadow-app-accent/20 flex items-center justify-center gap-2"
-                >
-                  <Package size={20} />
-                  Update Inventory
-                </button>
+                <>
+                  <button
+                    onClick={() => commitBottlingToInventory(activePlan)}
+                    disabled={!activePlan.selectedEntries?.length || !activePlan.bottles?.length || activePlan.bottles.some(b => !b.equipmentId || !b.fragranceName || b.count <= 0)}
+                    className="w-full py-4 bg-app-accent text-white rounded-xl font-bold hover:bg-app-accent-hover transition-all shadow-lg shadow-app-accent/20 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-app-accent"
+                  >
+                    <Package size={20} />
+                    Update Inventory
+                  </button>
+                  {(!activePlan.selectedEntries?.length || !activePlan.bottles?.length || activePlan.bottles.some(b => !b.equipmentId || !b.fragranceName || b.count <= 0)) && (
+                    <p className="text-center text-[10px] text-red-400 mt-2">
+                       Select at least one source blended oil and valid bottle equipment/fragrance to update inventory.
+                    </p>
+                  )}
+                </>
               ) : (
                 <button
                   onClick={() => revertBottlingFromInventory(activePlan)}

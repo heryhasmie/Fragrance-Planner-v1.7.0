@@ -277,8 +277,17 @@ export default function SellTracker({
             data: base64Data,
             directory: Directory.Documents,
             recursive: true
-          }).then(() => {
-            alert(`Receipt exported to Documents/Fragrance Planner/${fileName}`);
+          }).then((result) => {
+            import('@capacitor/share').then(({ Share }) => {
+               if (window.confirm(`File saved: Documents/Fragrance Planner/${fileName}\n\nWould you like to share this receipt?`)) {
+                 Share.share({
+                   title: 'Share Receipt',
+                   text: `Receipt for Order ${editingOrder.orderNumber}`,
+                   url: result.uri,
+                   dialogTitle: 'Share Receipt'
+                 });
+               }
+            });
           }).catch((e) => {
             console.error('Export fail', e);
             alert('Failed to save PDF.');
@@ -1693,13 +1702,13 @@ export default function SellTracker({
                   <div className="space-y-6">
                     {/* Order Summary Receipt Version */}
                     <div className="bg-app-card border border-app-border rounded-3xl p-6 shadow-sm max-w-sm mx-auto">
-                       <div ref={receiptRef} className="font-mono text-sm text-app-text p-4 bg-white">
+                       <div ref={receiptRef} className="font-mono text-sm text-black p-4 bg-white" style={{ color: 'black' }}>
                           <div className="text-center mb-6">
-                            <h3 className="font-bold text-lg mb-1">FRAGRANCE PLANNER</h3>
-                            <p className="text-xs text-app-muted">Receipt / Order Breakdown</p>
+                            <h3 className="font-bold text-lg mb-1" style={{ color: 'black' }}>FRAGRANCE PLANNER</h3>
+                            <p className="text-xs text-gray-500">Receipt / Order Breakdown</p>
                           </div>
                           
-                          <div className="space-y-1 mb-6 border-b-2 border-dashed border-app-border pb-4 text-xs">
+                          <div className="space-y-1 mb-6 border-b-2 border-dashed border-gray-300 pb-4 text-xs">
                             <div className="flex justify-between">
                               <span>Order #</span>
                               <span>{editingOrder.orderNumber}</span>
@@ -1718,7 +1727,7 @@ export default function SellTracker({
                             </div>
                           </div>
 
-                          <div className="space-y-3 mb-6 border-b-2 border-dashed border-app-border pb-4">
+                          <div className="space-y-3 mb-6 border-b-2 border-dashed border-gray-300 pb-4">
                             <div className="flex justify-between font-bold mb-2"><span>Item</span><span>Total</span></div>
                             
                             {editingOrder.items?.map((item, idx) => {
@@ -1733,7 +1742,7 @@ export default function SellTracker({
                                     <div key={idx} className="flex justify-between items-start">
                                       <div className="flex-1 pr-4">
                                         <div className="break-words">{itemInfo?.name || 'Item'} ({itemInfo?.capacityMl}ML)</div>
-                                        <div className="text-xs text-app-muted">{item.quantity} x {settings.currencySymbol}{item.priceAtSale.toFixed(2)}</div>
+                                        <div className="text-xs text-gray-500">{item.quantity} x {settings.currencySymbol}{item.priceAtSale.toFixed(2)}</div>
                                       </div>
                                       <div className="whitespace-nowrap">{settings.currencySymbol}{finalLine.toFixed(2)}</div>
                                     </div>
@@ -1741,22 +1750,22 @@ export default function SellTracker({
                             })}
                           </div>
 
-                          <div className="space-y-2 mb-6 border-b-2 border-dashed border-app-border pb-4 text-app-muted text-xs">
+                          <div className="space-y-2 mb-6 border-b-2 border-dashed border-gray-300 pb-4 text-gray-500 text-xs">
                             <div className="flex justify-between">
                               <span>Subtotal</span>
                               <span>{settings.currencySymbol}{(subtotal + itemLevelDiscountsTotal).toFixed(2)}</span>
                             </div>
-                            <div className="flex justify-between text-app-text">
+                            <div className="flex justify-between" style={{ color: 'black' }}>
                               <span>Discount</span>
                               <span>-{settings.currencySymbol}{(orderDiscount + itemLevelDiscountsTotal).toFixed(2)}</span>
                             </div>
-                            <div className="flex justify-between text-app-text">
+                            <div className="flex justify-between" style={{ color: 'black' }}>
                               <span>Postage</span>
                               <span>+{settings.currencySymbol}{(editingOrder.postage || 0).toFixed(2)}</span>
                             </div>
                           </div>
                           
-                          <div className="flex justify-between font-black text-lg mb-4 text-app-text">
+                          <div className="flex justify-between font-black text-lg mb-4" style={{ color: 'black' }}>
                               <span>TOTAL</span>
                               <span>{settings.currencySymbol}{total.toFixed(2)}</span>
                           </div>

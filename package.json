@@ -1,7 +1,7 @@
 {
   "name": "fragrance-planner",
   "private": true,
-  "version": "1.7.0",
+  "version": "1.7.2",
   "type": "module",
   "main": "electron/main.cjs",
   "scripts": {
@@ -54,6 +54,7 @@
     }
   },
   "dependencies": {
+    "@capacitor/app": "^8.1.0",
     "@capacitor/filesystem": "^8.1.2",
     "@capacitor/share": "^8.0.1",
     "@google/genai": "^1.29.0",

@@ -295,8 +295,8 @@ export default function MacerationTracker({ plannedBatches, fragrances, macerati
           <div className="md:col-span-1 space-y-6">
             <div className="bg-app-card rounded-xl shadow-sm border border-app-border p-6">
               <div className="flex flex-col items-center justify-center gap-2 mb-6">
-                <div className="relative w-32 h-32 flex items-center justify-center">
-                  <svg className="w-full h-full -rotate-90">
+                <div className="relative w-32 h-32 flex items-center justify-center shrink-0">
+                  <svg className="w-full h-full -rotate-90" viewBox="0 0 128 128">
                     <circle
                       cx="64"
                       cy="64"

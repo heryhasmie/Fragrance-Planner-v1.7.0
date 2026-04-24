@@ -197,6 +197,43 @@ export default function App() {
 
   // Handle Mobile Back Button
   useEffect(() => {
+    if (Capacitor.isNativePlatform()) {
+      import('@capacitor/app').then(({ App }) => {
+        const listener = App.addListener('backButton', ({ canGoBack }) => {
+          // Check if any modals are open
+          if (exportModalOpen) {
+            setExportModalOpen(false);
+            return;
+          }
+          if (importModalOpen) {
+            setImportModalOpen(false);
+            return;
+          }
+          if (purgeModalOpen) {
+            setPurgeModalOpen(false);
+            return;
+          }
+          if (isDrawerOpen) {
+            setIsDrawerOpen(false);
+            return;
+          }
+
+          if (canGoBack) {
+            window.history.back();
+          } else {
+            const confirmExit = window.confirm('Are you sure you want to exit the app?');
+            if (confirmExit) {
+              App.exitApp();
+            }
+          }
+        });
+        return () => {
+          listener.then(l => l.remove());
+        };
+      });
+      return; // Skip web listener if native
+    }
+
     const handleBackButton = (e: PopStateEvent) => {
       e.preventDefault();
       
@@ -737,7 +774,7 @@ export default function App() {
           })}
           <div className="mt-8 pt-8 border-t border-app-border px-4 text-center lg:text-left">
             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-app-muted">
-              Fragrance Planner v1.7.0
+              Fragrance Planner v1.7.2
             </p>
             <p className="text-[9px] font-bold text-app-accent/60 uppercase tracking-widest mt-1">
               Created by Sengeh Fragrance
@@ -882,6 +919,8 @@ export default function App() {
             setAgents={setAgents}
             customers={customers}
             setCustomers={setCustomers}
+            saleOrders={saleOrders}
+            fragrances={fragrances}
           />
         )}
         {activeTab === 'sales' && (

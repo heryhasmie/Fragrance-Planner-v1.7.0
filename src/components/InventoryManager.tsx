@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useDeferredValue } from 'react';
-import { Package, Plus, Search, ChevronRight, History, Trash2, Edit2, ArrowUpRight, ArrowDownLeft, Info, Box, X, HelpCircle, Layers } from 'lucide-react';
+import { Package, Plus, Search, ChevronRight, ChevronDown, History, Trash2, Edit2, ArrowUpRight, ArrowDownLeft, Info, Box, X, HelpCircle, Layers } from 'lucide-react';
 import { InventoryItem, InventoryContainer, InventoryLog, RawMaterial, Equipment, Fragrance } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { useConfirm } from '../hooks/useConfirm';
@@ -47,6 +47,12 @@ export default function InventoryManager({ inventory, setInventory, rawMaterials
     note: ''
   });
 
+  // Add Item Modal State (Controlled to allow searching)
+  const [addItemType, setAddItemType] = useState('raw_material');
+  const [addSearchQuery, setAddSearchQuery] = useState('');
+  const [isAddDropdownOpen, setIsAddDropdownOpen] = useState(false);
+  const [selectedAddItemId, setSelectedAddItemId] = useState<string>('');
+
   const deferredSearchTerm = useDeferredValue(searchTerm);
 
   const filteredInventory = useMemo(() => {
@@ -59,9 +65,14 @@ export default function InventoryManager({ inventory, setInventory, rawMaterials
 
   const handleAddItem = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (!selectedAddItemId) {
+      alert('Please select an item.');
+      return;
+    }
+
     const formData = new FormData(e.currentTarget);
-    const type = formData.get('type') as string;
-    const itemId = formData.get('itemId') as string;
+    const type = addItemType;
+    const itemId = selectedAddItemId;
     const capacity = Number(formData.get('capacity'));
     const unit = formData.get('unit') as any;
     const amount = Number(formData.get('amount'));
@@ -114,6 +125,9 @@ export default function InventoryManager({ inventory, setInventory, rawMaterials
     }
 
     setIsAddModalOpen(false);
+    setSelectedAddItemId('');
+    setAddSearchQuery('');
+    setAddItemType('raw_material');
   };
 
   const deleteInventoryItem = (id: string, e: React.MouseEvent) => {
@@ -496,7 +510,15 @@ export default function InventoryManager({ inventory, setInventory, rawMaterials
             <form onSubmit={handleAddItem} className="space-y-4">
               <div>
                 <label className="block text-xs font-black uppercase tracking-widest text-app-muted mb-1">Item Type</label>
-                <select name="type" required className="w-full px-4 py-2 bg-app-bg border border-app-border rounded-xl text-app-text outline-none focus:ring-2 focus:ring-app-accent">
+                <select 
+                  value={addItemType}
+                  onChange={(e) => {
+                     setAddItemType(e.target.value);
+                     setSelectedAddItemId('');
+                     setAddSearchQuery('');
+                  }}
+                  className="w-full px-4 py-2 bg-app-bg border border-app-border rounded-xl text-app-text outline-none focus:ring-2 focus:ring-app-accent"
+                >
                   <option value="raw_material">Raw Material</option>
                   <option value="equipment">Equipment / Bottle</option>
                   <option value="fragrance_oil">Fragrance Oil</option>
@@ -506,19 +528,70 @@ export default function InventoryManager({ inventory, setInventory, rawMaterials
                 </select>
               </div>
 
-              <div>
+              <div className="relative">
                 <label className="block text-xs font-black uppercase tracking-widest text-app-muted mb-1">Select Item</label>
-                <select name="itemId" required className="w-full px-4 py-2 bg-app-bg border border-app-border rounded-xl text-app-text outline-none focus:ring-2 focus:ring-app-accent">
-                  <optgroup label="Raw Materials">
-                    {rawMaterials.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-                  </optgroup>
-                  <optgroup label="Equipment">
-                    {equipments.map(e => <option key={e.id} value={e.id}>{e.name} ({e.size})</option>)}
-                  </optgroup>
-                  <optgroup label="Fragrances">
-                    {fragrances.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
-                  </optgroup>
-                </select>
+                <div 
+                  className="w-full px-4 py-2 bg-app-bg border border-app-border rounded-xl text-app-text cursor-pointer flex justify-between items-center hover:border-app-accent/50 transition-colors"
+                  onClick={() => setIsAddDropdownOpen(!isAddDropdownOpen)}
+                >
+                  <span className="truncate">
+                    {(() => {
+                      if (!selectedAddItemId) return <span className="text-app-muted">Select an item...</span>;
+                      if (addItemType === 'raw_material') return rawMaterials.find(m => m.id === selectedAddItemId)?.name;
+                      if (addItemType === 'equipment') {
+                        const e = equipments.find(e => e.id === selectedAddItemId);
+                        return e ? `${e.name} (${e.size})` : '';
+                      }
+                      return fragrances.find(f => f.id === selectedAddItemId)?.name;
+                    })()}
+                  </span>
+                  <ChevronDown size={18} className="text-app-muted" />
+                </div>
+                
+                {isAddDropdownOpen && (
+                  <div className="absolute left-0 right-0 top-full mt-1 bg-app-card border border-app-border rounded-xl overflow-hidden shadow-2xl z-50">
+                    <div className="p-2 border-b border-app-border bg-app-bg flex items-center gap-2">
+                       <Search size={16} className="text-app-muted" />
+                       <input 
+                         type="text"
+                         autoFocus
+                         placeholder="Search items..."
+                         value={addSearchQuery}
+                         onChange={(e) => setAddSearchQuery(e.target.value)}
+                         className="bg-transparent border-none outline-none text-app-text text-sm w-full"
+                       />
+                    </div>
+                    <div className="max-h-48 overflow-y-auto p-1 custom-scrollbar">
+                      {(() => {
+                        let options: any[] = [];
+                        if (addItemType === 'raw_material') options = rawMaterials.map(m => ({ ...m, subtitle: '' }));
+                        else if (addItemType === 'equipment') options = equipments.map(e => ({ ...e, subtitle: e.size }));
+                        else options = fragrances.map(f => ({ ...f, subtitle: '' }));
+                        
+                        const q = addSearchQuery.toLowerCase();
+                        if (q) {
+                          options = options.filter(o => o.name.toLowerCase().includes(q) || (o.subtitle && o.subtitle.toLowerCase().includes(q)));
+                        }
+                        
+                        if (options.length === 0) return <div className="p-3 text-center text-xs text-app-muted">No items found.</div>;
+                        
+                        return options.map(opt => (
+                          <div 
+                            key={opt.id}
+                            className={`px-3 py-2 text-sm rounded-lg cursor-pointer transition-colors ${selectedAddItemId === opt.id ? 'bg-app-accent/10 text-app-accent font-bold' : 'hover:bg-app-bg text-app-text'}`}
+                            onClick={() => {
+                              setSelectedAddItemId(opt.id);
+                              setIsAddDropdownOpen(false);
+                            }}
+                          >
+                            <div>{opt.name}</div>
+                            {opt.subtitle && <div className="text-xs text-app-muted">{opt.subtitle}</div>}
+                          </div>
+                        ));
+                      })()}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-4">
