@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Trash2, Plus, Save, X, ChevronLeft, Edit2, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Copy, CheckSquare, HelpCircle, LayoutList, Sigma, ListChecks, ShoppingBag, Package, ArrowDownLeft, ArrowUpRight, RefreshCw } from 'lucide-react';
+import { Trash2, Plus, Save, X, ChevronLeft, Edit2, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Copy, CheckSquare, HelpCircle, LayoutList, Sigma, ListChecks, ShoppingBag, Package, ArrowDownLeft, ArrowUpRight, RefreshCw, Move } from 'lucide-react';
 import { Formula, Fragrance, PlannedBatch, BlendEntry, RawMaterial, InventoryItem, InventoryLog, InventoryContainer, PriceEntry } from '../types';
 import { useConfirm } from '../hooks/useConfirm';
 import TutorialModal from './TutorialModal';
@@ -32,7 +32,7 @@ export default function BlendPlanner({ formulas = [], fragrances = [], setFragra
     if (selectedCell) {
       const cellElement = document.getElementById(`cell-${selectedCell.row}-${selectedCell.col}`);
       if (cellElement) {
-        cellElement.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+        cellElement.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
       }
     }
   }, [selectedCell]);
@@ -40,6 +40,7 @@ export default function BlendPlanner({ formulas = [], fragrances = [], setFragra
   const [selectedBatch, setSelectedBatch] = useState<PlannedBatch | null>(null);
   const [editingBatch, setEditingBatch] = useState<PlannedBatch | null>(null);
   const [displayMode, setDisplayMode] = useState<'ml' | 'percentage'>('ml');
+  const [showDPad, setShowDPad] = useState(false);
   
   // New options
   const [decimalPlaces, setDecimalPlaces] = useState<number>(2);
@@ -1177,7 +1178,7 @@ export default function BlendPlanner({ formulas = [], fragrances = [], setFragra
     return (
       <div className="space-y-6 max-w-6xl mx-auto">
         {ModalsAndToasts}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
           <div className="flex items-center gap-4">
             <button 
               onClick={() => setViewState('list')}
@@ -1191,16 +1192,7 @@ export default function BlendPlanner({ formulas = [], fragrances = [], setFragra
             </div>
           </div>
           
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1 bg-app-card rounded-md border border-app-border p-1 mr-4">
-              <button title="Move Left" onClick={() => moveSelection('left')} className="p-1.5 text-app-muted hover:text-app-accent hover:bg-app-accent/10 rounded transition-colors"><ArrowLeft size={16} /></button>
-              <div className="flex flex-col">
-                <button title="Move Up" onClick={() => moveSelection('up')} className="p-1 text-app-muted hover:text-app-accent hover:bg-app-accent/10 rounded transition-colors"><ArrowUp size={16} /></button>
-                <button title="Move Down" onClick={() => moveSelection('down')} className="p-1 text-app-muted hover:text-app-accent hover:bg-app-accent/10 rounded transition-colors"><ArrowDown size={16} /></button>
-              </div>
-              <button title="Move Right" onClick={() => moveSelection('right')} className="p-1.5 text-app-muted hover:text-app-accent hover:bg-app-accent/10 rounded transition-colors"><ArrowRight size={16} /></button>
-            </div>
-          
+          <div className="flex items-center gap-2 flex-wrap">
             {!selectedBatch.isCommittedToInventory ? (
               <>
                 {!selectedBatch.isMaterialsTaken ? (
@@ -1271,7 +1263,7 @@ export default function BlendPlanner({ formulas = [], fragrances = [], setFragra
           <div className="xl:col-span-3 space-y-6">
             <div className="bg-app-card rounded-xl shadow-sm border border-app-border overflow-hidden">
               <div className="p-4 border-b border-app-border bg-app-bg flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div className="flex items-center gap-4">
+                <div className="flex flex-wrap items-center gap-4">
                   <h3 className="text-lg font-bold text-app-text">Blend Entries</h3>
                   <div className="flex items-center gap-2">
                     <label className="text-xs font-medium text-app-muted">Filter:</label>
@@ -1313,7 +1305,7 @@ export default function BlendPlanner({ formulas = [], fragrances = [], setFragra
                     </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-4">
+                <div className="flex flex-wrap items-center gap-4">
                   <div className="flex items-center gap-2">
                     <label className="text-xs font-medium text-app-muted">Decimals:</label>
                     <select
@@ -1595,6 +1587,32 @@ export default function BlendPlanner({ formulas = [], fragrances = [], setFragra
               )}
             </div>
           </div>
+        </div>
+        
+        {/* Floating Table Navigation Tool */}
+        <div className="fixed bottom-6 right-6 z-[100] flex flex-col items-end gap-3">
+          {showDPad && (
+            <div className="grid grid-cols-3 grid-rows-3 gap-1 bg-app-card/95 backdrop-blur-md border border-app-border shadow-2xl rounded-xl p-3 animate-in slide-in-from-bottom-4 fade-in">
+              <div />
+              <button title="Move Up" onClick={() => moveSelection('up')} className="p-3 text-app-text flex items-center justify-center bg-app-bg/80 border border-app-border/50 hover:bg-app-accent hover:border-app-accent hover:text-white rounded-lg transition-all active:scale-95"><ArrowUp size={22} /></button>
+              <div />
+              
+              <button title="Move Left" onClick={() => moveSelection('left')} className="p-3 text-app-text flex items-center justify-center bg-app-bg/80 border border-app-border/50 hover:bg-app-accent hover:border-app-accent hover:text-white rounded-lg transition-all active:scale-95"><ArrowLeft size={22} /></button>
+              <div className="flex items-center justify-center p-2"><div className="w-3 h-3 rounded-full bg-app-accent/30 shadow-[0_0_10px_rgba(var(--color-app-accent),0.3)]" /></div>
+              <button title="Move Right" onClick={() => moveSelection('right')} className="p-3 text-app-text flex items-center justify-center bg-app-bg/80 border border-app-border/50 hover:bg-app-accent hover:border-app-accent hover:text-white rounded-lg transition-all active:scale-95"><ArrowRight size={22} /></button>
+              
+              <div />
+              <button title="Move Down" onClick={() => moveSelection('down')} className="p-3 text-app-text flex items-center justify-center bg-app-bg/80 border border-app-border/50 hover:bg-app-accent hover:border-app-accent hover:text-white rounded-lg transition-all active:scale-95"><ArrowDown size={22} /></button>
+              <div />
+            </div>
+          )}
+          <button
+            onClick={() => setShowDPad(!showDPad)}
+            className={`p-4 rounded-full shadow-xl flex items-center justify-center transition-all duration-300 hover:scale-105 active:scale-95 ${showDPad ? 'bg-app-accent text-white' : 'bg-app-card border border-app-border text-app-text hover:bg-app-bg'}`}
+            title="Toggle Table Navigation Navigation"
+          >
+            {showDPad ? <X size={24} /> : <Move size={24} />}
+          </button>
         </div>
       </div>
     );
