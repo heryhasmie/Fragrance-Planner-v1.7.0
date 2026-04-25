@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Trash2, Plus, Save, X, ChevronLeft, Edit2, ArrowUp, ArrowDown, Copy, CheckSquare, HelpCircle, LayoutList, Sigma, ListChecks, ShoppingBag, Package, ArrowDownLeft, ArrowUpRight, RefreshCw } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Trash2, Plus, Save, X, ChevronLeft, Edit2, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Copy, CheckSquare, HelpCircle, LayoutList, Sigma, ListChecks, ShoppingBag, Package, ArrowDownLeft, ArrowUpRight, RefreshCw } from 'lucide-react';
 import { Formula, Fragrance, PlannedBatch, BlendEntry, RawMaterial, InventoryItem, InventoryLog, InventoryContainer, PriceEntry } from '../types';
 import { useConfirm } from '../hooks/useConfirm';
 import TutorialModal from './TutorialModal';
@@ -26,6 +26,17 @@ const generateId = () => {
 
 export default function BlendPlanner({ formulas = [], fragrances = [], setFragrances, plannedBatches = [], setPlannedBatches, rawMaterials = [], inventory = [], setInventory, priceEntries }: Props) {
   const [viewState, setViewState] = useState<'list' | 'detail' | 'edit'>('list');
+  const [selectedCell, setSelectedCell] = useState<{row: number, col: number} | null>(null);
+
+  useEffect(() => {
+    if (selectedCell) {
+      const cellElement = document.getElementById(`cell-${selectedCell.row}-${selectedCell.col}`);
+      if (cellElement) {
+        cellElement.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+      }
+    }
+  }, [selectedCell]);
+
   const [selectedBatch, setSelectedBatch] = useState<PlannedBatch | null>(null);
   const [editingBatch, setEditingBatch] = useState<PlannedBatch | null>(null);
   const [displayMode, setDisplayMode] = useState<'ml' | 'percentage'>('ml');
@@ -1144,6 +1155,25 @@ export default function BlendPlanner({ formulas = [], fragrances = [], setFragra
       return { id, name: f?.name || 'Unknown' };
     });
 
+    const numRows = filteredEntries.length;
+    const numCols = 6 + uniqueMaterials.length;
+
+    const moveSelection = (dir: 'up' | 'down' | 'left' | 'right') => {
+      setSelectedCell(prev => {
+        if (!prev) return { row: 0, col: 0 };
+        if (dir === 'up') {
+          return { row: Math.max(0, prev.row - 1), col: prev.col };
+        } else if (dir === 'down') {
+          return { row: Math.min(numRows - 1, prev.row + 1), col: prev.col };
+        } else if (dir === 'left') {
+          return { row: prev.row, col: Math.max(0, prev.col - 1) };
+        } else if (dir === 'right') {
+          return { row: prev.row, col: Math.min(numCols - 1, prev.col + 1) };
+        }
+        return prev;
+      });
+    };
+
     return (
       <div className="space-y-6 max-w-6xl mx-auto">
         {ModalsAndToasts}
@@ -1157,10 +1187,20 @@ export default function BlendPlanner({ formulas = [], fragrances = [], setFragra
             </button>
             <div>
               <h2 className="text-2xl font-bold text-app-text">{selectedBatch.name}</h2>
-              <p className="text-app-muted text-sm">{selectedBatch.date}</p>
+              <p className="text-sm text-app-muted">{selectedBatch.date} • {filteredEntries.length} entries</p>
             </div>
           </div>
-          <div className="flex gap-2">
+          
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 bg-app-card rounded-md border border-app-border p-1 mr-4">
+              <button title="Move Left" onClick={() => moveSelection('left')} className="p-1.5 text-app-muted hover:text-app-accent hover:bg-app-accent/10 rounded transition-colors"><ArrowLeft size={16} /></button>
+              <div className="flex flex-col">
+                <button title="Move Up" onClick={() => moveSelection('up')} className="p-1 text-app-muted hover:text-app-accent hover:bg-app-accent/10 rounded transition-colors"><ArrowUp size={16} /></button>
+                <button title="Move Down" onClick={() => moveSelection('down')} className="p-1 text-app-muted hover:text-app-accent hover:bg-app-accent/10 rounded transition-colors"><ArrowDown size={16} /></button>
+              </div>
+              <button title="Move Right" onClick={() => moveSelection('right')} className="p-1.5 text-app-muted hover:text-app-accent hover:bg-app-accent/10 rounded transition-colors"><ArrowRight size={16} /></button>
+            </div>
+          
             {!selectedBatch.isCommittedToInventory ? (
               <>
                 {!selectedBatch.isMaterialsTaken ? (
@@ -1317,7 +1357,20 @@ export default function BlendPlanner({ formulas = [], fragrances = [], setFragra
                   </div>
                 </div>
               </div>
-              <div className="overflow-x-auto">
+              <div 
+                className="overflow-x-auto outline-none rounded-lg border border-app-border focus:ring-2 focus:ring-app-accent/50 transition-all" 
+                tabIndex={0} 
+                onKeyDown={(e) => {
+                  if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                    e.preventDefault();
+                    moveSelection(
+                      e.key === 'ArrowUp' ? 'up' : 
+                      e.key === 'ArrowDown' ? 'down' : 
+                      e.key === 'ArrowLeft' ? 'left' : 'right'
+                    );
+                  }
+                }}
+              >
                 <table className="w-full text-left border-collapse text-sm whitespace-nowrap">
                   <thead>
                     <tr className="bg-app-bg border-b border-app-border">
@@ -1340,7 +1393,7 @@ export default function BlendPlanner({ formulas = [], fragrances = [], setFragra
                         </td>
                       </tr>
                     ) : (
-                      filteredEntries.map((entry) => {
+                      filteredEntries.map((entry, rowIndex) => {
                         const formula = formulas.find(f => f.id === entry.formulaId);
                         const fragrance = fragrances.find(f => f.id === entry.fragranceId);
                         
@@ -1360,19 +1413,20 @@ export default function BlendPlanner({ formulas = [], fragrances = [], setFragra
 
                         return (
                           <tr key={entry.id} className="hover:bg-app-bg transition-colors">
-                            <td className="py-3 px-4 font-medium text-app-text">
+                            <td id={`cell-${rowIndex}-0`} onClick={() => setSelectedCell({row: rowIndex, col: 0})} className={`py-3 px-4 font-medium text-app-text transition-all cursor-pointer ${selectedCell?.row === rowIndex && selectedCell?.col === 0 ? 'ring-2 ring-app-accent/50 bg-app-accent/10 outline-none relative z-10' : ''}`}>
                               {formula?.type === 'accord' ? (entry.customFragranceName || '~') : (fragrance?.name || '-')}
                             </td>
-                            <td className="py-3 px-4 text-app-muted">{formula?.name || 'Unknown'}</td>
-                            <td className="py-3 px-4 text-right text-app-muted">
+                            <td id={`cell-${rowIndex}-1`} onClick={() => setSelectedCell({row: rowIndex, col: 1})} className={`py-3 px-4 text-app-muted transition-all cursor-pointer ${selectedCell?.row === rowIndex && selectedCell?.col === 1 ? 'ring-2 ring-app-accent/50 bg-app-accent/10 outline-none relative z-10' : ''}`}>{formula?.name || 'Unknown'}</td>
+                            <td id={`cell-${rowIndex}-2`} onClick={() => setSelectedCell({row: rowIndex, col: 2})} className={`py-3 px-4 text-right text-app-muted transition-all cursor-pointer ${selectedCell?.row === rowIndex && selectedCell?.col === 2 ? 'ring-2 ring-app-accent/50 bg-app-accent/10 outline-none relative z-10' : ''}`}>
                               {formula?.type === 'accord' 
                                 ? `${entry.multiplier || 1}x` 
                                 : (detailVolumeUnit === 'l' ? `${((entry.capacityMl || 0) / 1000).toFixed(detailDecimals)} L` : `${(entry.capacityMl || 0).toFixed(detailDecimals)} mL`)}
                             </td>
-                            <td className="py-3 px-4 text-right text-app-accent font-medium">{oilDisplay}</td>
-                            <td className="py-3 px-4 text-app-muted italic">{fragrance?.originalScent || '-'}</td>
+                            <td id={`cell-${rowIndex}-3`} onClick={() => setSelectedCell({row: rowIndex, col: 3})} className={`py-3 px-4 text-right text-app-accent font-medium transition-all cursor-pointer ${selectedCell?.row === rowIndex && selectedCell?.col === 3 ? 'ring-2 ring-app-accent/50 bg-app-accent/10 outline-none relative z-10' : ''}`}>{oilDisplay}</td>
+                            <td id={`cell-${rowIndex}-4`} onClick={() => setSelectedCell({row: rowIndex, col: 4})} className={`py-3 px-4 text-app-muted italic transition-all cursor-pointer ${selectedCell?.row === rowIndex && selectedCell?.col === 4 ? 'ring-2 ring-app-accent/50 bg-app-accent/10 outline-none relative z-10' : ''}`}>{fragrance?.originalScent || '-'}</td>
                             
-                            {uniqueMaterials.map(matName => {
+                            {uniqueMaterials.map((matName, matIndex) => {
+                              const cellColIndex = 5 + matIndex;
                               let matPct = 0;
                               let matAmount = 0;
                               let matUnit = 'g';
@@ -1422,13 +1476,13 @@ export default function BlendPlanner({ formulas = [], fragrances = [], setFragra
                               }
                                 
                               return (
-                                <td key={matName} className="py-3 px-4 text-right text-app-muted">
+                                <td id={`cell-${rowIndex}-${cellColIndex}`} key={matName} onClick={() => setSelectedCell({row: rowIndex, col: cellColIndex})} className={`py-3 px-4 text-right transition-all cursor-pointer ${matPct > 0 || matAmount > 0 ? 'text-app-text font-bold' : 'text-app-muted'} ${selectedCell?.row === rowIndex && selectedCell?.col === cellColIndex ? 'ring-2 ring-app-accent/50 bg-app-accent/10 outline-none relative z-10' : ''}`}>
                                   {(matPct > 0 || matAmount > 0) ? valDisplay : '-'}
                                 </td>
                               );
                             })}
                             
-                            <td className="py-3 px-4 text-right font-medium text-app-text">
+                            <td id={`cell-${rowIndex}-${5 + uniqueMaterials.length}`} onClick={() => setSelectedCell({row: rowIndex, col: 5 + uniqueMaterials.length})} className={`py-3 px-4 text-right font-medium text-app-text transition-all cursor-pointer ${selectedCell?.row === rowIndex && selectedCell?.col === 5 + uniqueMaterials.length ? 'ring-2 ring-app-accent/50 bg-app-accent/10 outline-none relative z-10' : ''}`}>
                               {formula?.type === 'accord'
                                 ? `${totalAmount.toFixed(detailDecimals)} (mixed)`
                                 : (displayMode === 'percentage' 
