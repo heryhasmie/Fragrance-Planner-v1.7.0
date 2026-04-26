@@ -19,6 +19,7 @@ import AgentContactManager from './components/AgentContactManager';
 import SellTracker from './components/SellTracker';
 import SettingsTab from './components/Settings';
 import NotebookTab from './components/NotebookTab';
+import SplashScreen from './components/SplashScreen';
 
 import AppsWiki from './components/AppsWiki';
 
@@ -35,6 +36,7 @@ import { Capacitor } from '@capacitor/core';
 // Inside App
 export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>('formulas');
+  const [hasStarted, setHasStarted] = useState(false);
 
   // State Management with LocalStorage
   const [formulas, setFormulas] = useLocalStorage<Formula[]>('fragrance_formulas', []);
@@ -627,6 +629,10 @@ export default function App() {
     { id: 'white-gold', label: 'White Gold', icon: Palette },
   ] as const;
 
+  if (!hasStarted) {
+    return <SplashScreen onStart={() => setHasStarted(true)} />;
+  }
+
   return (
     <div className="min-h-screen w-full overflow-x-hidden bg-app-bg text-app-text font-sans transition-colors duration-300">
       {/* Header */}
@@ -777,7 +783,7 @@ export default function App() {
           })}
           <div className="mt-8 pt-8 border-t border-app-border px-4 text-center lg:text-left">
             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-app-muted">
-              Fragrance Planner v1.8.3
+              Fragrance Planner v1.9.0
             </p>
             <p className="text-[9px] font-bold text-app-accent/60 uppercase tracking-widest mt-1">
               Created by Sengeh Fragrance
