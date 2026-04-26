@@ -9,6 +9,14 @@ export default function SplashScreen({ onStart }: SplashScreenProps) {
 
   const handleClick = () => {
     if (isExiting) return;
+    
+    // Play sound effect at full volume
+    const audio = document.getElementById('splash-audio') as HTMLAudioElement;
+    if (audio) {
+      audio.volume = 1.0;
+      audio.play().catch(e => console.log('Audio play failed:', e));
+    }
+
     setIsExiting(true);
     setTimeout(() => {
       onStart();
@@ -17,11 +25,14 @@ export default function SplashScreen({ onStart }: SplashScreenProps) {
 
   return (
     <div 
-      className={`fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-8 cursor-pointer overflow-hidden transition-transform duration-[1000ms] ease-[cubic-bezier(0.76,0,0.24,1)] ${
-        isExiting ? 'translate-y-full delay-[500ms]' : 'translate-y-0'
+      className={`fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-8 cursor-pointer overflow-hidden transition-all duration-[1200ms] ease-in-out ${
+        isExiting ? 'opacity-0 scale-105 pointer-events-none' : 'opacity-100 scale-100'
       }`}
       onClick={handleClick}
     >
+      {/* Audio element preloaded for instant playback */}
+      <audio id="splash-audio" src="https://docs.google.com/uc?export=download&id=1-tBsuGTfq0kVNlgnmJXxvN2k1HgkhfTO" preload="auto" />
+
       {/* Theme-based solid background */}
       <div className="absolute inset-0 z-0 bg-app-bg" />
 
@@ -29,8 +40,8 @@ export default function SplashScreen({ onStart }: SplashScreenProps) {
       <div className="relative z-10 flex flex-col w-full h-full max-w-7xl gap-6 sm:gap-8 justify-between py-4">
 
         {/* Top Floating Pill (Aesthetic Nav) */}
-        <div className={`flex justify-between items-center w-full rounded-full border border-app-border bg-app-bg/40 backdrop-blur-2xl px-6 py-4 shadow-[0_8px_32px_0_rgba(0,0,0,0.1)] transition-transform duration-[800ms] ease-[cubic-bezier(0.76,0,0.24,1)] ${
-          isExiting ? '-translate-x-[120vw] delay-[0ms]' : 'translate-x-0 animate-in slide-in-from-top-12 duration-1000 delay-[100ms] fill-mode-both'
+        <div className={`flex justify-between items-center w-full rounded-full border border-app-border bg-app-bg/40 backdrop-blur-2xl px-6 py-4 shadow-[0_8px_32px_0_rgba(0,0,0,0.1)] transition-all duration-[1000ms] ease-[cubic-bezier(0.76,0,0.24,1)] ${
+          isExiting ? 'opacity-0 blur-xl scale-105 -translate-y-8 z-0' : 'opacity-100 blur-0 scale-100 translate-y-0 z-10 animate-in slide-in-from-top-12 duration-1000 delay-[100ms] fill-mode-both'
         }`}>
           <div className="flex items-center gap-8 text-app-text/90 text-xs sm:text-sm font-medium tracking-[0.2em] uppercase">
             <span className="font-black text-app-text tracking-[0.3em] flex items-center gap-2">
@@ -51,8 +62,8 @@ export default function SplashScreen({ onStart }: SplashScreenProps) {
         </div>
 
         {/* Main Center Glass Card */}
-        <div className={`relative flex flex-col lg:flex-row items-center lg:items-center justify-between w-full h-full lg:h-auto rounded-[2rem] sm:rounded-[3rem] border border-app-border bg-app-bg/40 backdrop-blur-[40px] p-8 sm:p-12 lg:p-20 gap-12 lg:gap-24 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.2)] overflow-hidden transition-transform duration-[800ms] ease-[cubic-bezier(0.76,0,0.24,1)] flex-grow ${
-          isExiting ? '-translate-x-[120vw] delay-[100ms]' : 'translate-x-0 animate-in slide-in-from-left-12 duration-1000 delay-[200ms] fill-mode-both'
+        <div className={`relative flex flex-col lg:flex-row items-center lg:items-center justify-between w-full h-full lg:h-auto rounded-[2rem] sm:rounded-[3rem] border border-app-border bg-app-bg/40 backdrop-blur-[40px] p-8 sm:p-12 lg:p-20 gap-12 lg:gap-24 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.2)] overflow-hidden transition-all duration-[1000ms] ease-[cubic-bezier(0.76,0,0.24,1)] flex-grow ${
+          isExiting ? 'opacity-0 blur-2xl scale-105 delay-[100ms] z-0' : 'opacity-100 blur-0 scale-100 z-10 animate-in slide-in-from-left-12 duration-1000 delay-[200ms] fill-mode-both'
         }`}>
 
           {/* Left: Glass Bottle Image/Icon Block */}
@@ -130,8 +141,8 @@ export default function SplashScreen({ onStart }: SplashScreenProps) {
         </div>
 
         {/* Bottom Floating Pill (Call to action) */}
-        <div className={`flex flex-col sm:flex-row justify-between items-center w-full rounded-full border border-app-border bg-app-bg/40 backdrop-blur-2xl px-4 py-3 sm:py-4 sm:px-6 shadow-[0_8px_32px_0_rgba(0,0,0,0.1)] transition-transform duration-[800ms] ease-[cubic-bezier(0.76,0,0.24,1)] ${
-          isExiting ? '-translate-x-[120vw] delay-[200ms]' : 'translate-x-0 animate-in slide-in-from-bottom-12 duration-1000 delay-[300ms] fill-mode-both'
+        <div className={`flex flex-col sm:flex-row justify-between items-center w-full rounded-full border border-app-border bg-app-bg/40 backdrop-blur-2xl px-4 py-3 sm:py-4 sm:px-6 shadow-[0_8px_32px_0_rgba(0,0,0,0.1)] transition-all duration-[1000ms] ease-[cubic-bezier(0.76,0,0.24,1)] ${
+          isExiting ? 'opacity-0 blur-xl scale-105 translate-y-8 delay-[200ms] z-0' : 'opacity-100 blur-0 scale-100 translate-y-0 z-10 animate-in slide-in-from-bottom-12 duration-1000 delay-[300ms] fill-mode-both'
         }`}>
           {/* Subtle branding/info left side */}
           <div className="hidden sm:flex items-center gap-4 pl-4">
