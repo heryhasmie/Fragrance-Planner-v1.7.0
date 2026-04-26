@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Plus, Trash2, Truck, Package, FlaskConical, Wrench, Receipt, Percent, DollarSign, Save, ChevronLeft, Edit2, Calendar, HelpCircle } from 'lucide-react';
 import { RawMaterial, PriceEntry, ShipmentOption, BudgetItem, BudgetPlan, Fragrance, Equipment, Formula, PlannedBatch, BlendEntry, AppSettings } from '../types';
 import { useConfirm } from '../hooks/useConfirm';
+import { getLatestFormulas } from '../utils/formulaUtils';
 import TutorialModal from './TutorialModal';
 
 interface BudgetPlannerProps {
@@ -1038,7 +1039,7 @@ export default function BudgetPlanner({
                       className="w-full px-3 py-2 bg-app-bg border border-app-border rounded-md text-app-text focus:ring-app-accent focus:border-app-accent"
                     >
                       <option value="">-- Select a Formula --</option>
-                      {formulas.map(f => (
+                      {getLatestFormulas(formulas || []).map(f => (
                         <option key={f.id} value={f.id}>{f.name} {f.type === 'accord' ? '(Accord)' : ''}</option>
                       ))}
                     </select>

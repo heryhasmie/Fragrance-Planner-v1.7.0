@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useMemo, useDeferredValue } from 'r
 import { Plus, Trash2, Save, X, ChevronLeft, Edit2, MoreVertical, Copy, CheckSquare, ArrowUp, ArrowDown, HelpCircle, Beaker, Zap, Calculator, Layers, GitBranch, History, ArrowLeftRight, ChevronDown, Search } from 'lucide-react';
 import { Formula, Material, FragranceOil, RawMaterial, Fragrance } from '../types';
 import { useConfirm } from '../hooks/useConfirm';
+import { getLatestFormulas } from '../utils/formulaUtils';
 import TutorialModal from './TutorialModal';
 import ImportFormulaModal from './ImportFormulaModal';
 
@@ -131,7 +132,7 @@ export default function FormulaList({ formulas, setFormulas, rawMaterials, setRa
     },
     {
       title: 'R&D Versioning',
-      content: 'Use "Branch" to create Mods (versions) of a scent. Compare two versions side-by-side to see exactly what changed. Use "Finalize" to strip versioning and keep a mod as your new standalone original.',
+      content: 'Use "Branch" to create Mods (versions) of a scent. Compare two versions side-by-side to see exactly what changed.',
       icon: <GitBranch size={40} />
     }
   ];
@@ -173,11 +174,16 @@ export default function FormulaList({ formulas, setFormulas, rawMaterials, setRa
   };
 
   const branchFormula = (formula: Formula) => {
-    const nextVersion = (formula.version || 1) + 1;
+    const groupId = formula.originalFormulaId || formula.id;
+    const familyFormulas = formulas.filter((f) => (f.originalFormulaId || f.id) === groupId || f.id === groupId);
+    const highestVersion = Math.max(1, ...familyFormulas.map(f => f.version || 1));
+    const nextVersion = highestVersion + 1;
+
+    const baseName = formula.name.replace(/(?:\s*\(Mod\s*\d+\))/ig, '').trim();
     const newFormula: Formula = {
       ...formula,
       id: crypto.randomUUID(),
-      name: `${formula.name} (Mod ${nextVersion})`,
+      name: `${baseName}`,
       version: nextVersion,
       parentFormulaId: formula.id,
       originalFormulaId: formula.originalFormulaId || formula.id,
@@ -200,26 +206,32 @@ export default function FormulaList({ formulas, setFormulas, rawMaterials, setRa
     setViewState('edit');
   };
 
-  const finalizeFormula = (formula: Formula) => {
-    confirm('Finalize Formula', 'This will remove all versioning metadata (Mod number, history link) and make this a standalone "Original" formula. Continue?', () => {
-      const updatedFormula: Formula = {
-        ...formula,
-        version: undefined,
-        parentFormulaId: undefined,
-        originalFormulaId: undefined,
-        versionNote: undefined,
-        name: formula.name.replace(/\s\(Mod\s\d+\)$/, '')
-      };
-      setFormulas(formulas.map(f => f.id === formula.id ? updatedFormula : f));
-      if (selectedFormula?.id === formula.id) setSelectedFormula(updatedFormula);
-      setViewState('detail');
+  const deleteFormulaVersion = (id: string, isOriginal: boolean) => {
+    confirm('Delete Version', isOriginal ? 'Are you sure you want to delete this specific version? Since this is the original version, its versions will be detached but kept.' : 'Are you sure you want to delete this specific version?', () => {
+      const remainingFormulas = formulas.filter((f) => f.id !== id);
+      setFormulas(remainingFormulas);
+      
+      if (selectedFormula?.id === id) {
+        const groupId = selectedFormula.originalFormulaId || selectedFormula.id;
+        const otherVersion = remainingFormulas.find(f => (f.originalFormulaId || f.id) === groupId);
+        if (otherVersion) {
+          setSelectedFormula(otherVersion);
+        } else {
+          setViewState('list');
+          setSelectedFormula(null);
+        }
+      }
+      setSelectedIds(selectedIds.filter(selectedId => selectedId !== id));
     });
   };
 
   const deleteFormula = (id: string) => {
-    confirm('Delete Formula', 'Are you sure you want to delete this formula?', () => {
-      setFormulas(formulas.filter((f) => f.id !== id));
-      if (selectedFormula?.id === id) {
+    confirm('Delete Formula', 'Are you sure you want to delete this formula and all its versions?', () => {
+      const formulaToDelete = formulas.find(f => f.id === id);
+      if (!formulaToDelete) return;
+      const groupId = formulaToDelete.originalFormulaId || formulaToDelete.id;
+      setFormulas(formulas.filter((f) => (f.originalFormulaId || f.id) !== groupId));
+      if (selectedFormula?.id === id || (selectedFormula && (selectedFormula.originalFormulaId || selectedFormula.id) === groupId)) {
         setViewState('list');
         setSelectedFormula(null);
       }
@@ -228,8 +240,11 @@ export default function FormulaList({ formulas, setFormulas, rawMaterials, setRa
   };
 
   const deleteSelectedFormulas = () => {
-    confirm('Delete Formulas', `Are you sure you want to delete ${selectedIds.length} selected formulas?`, () => {
-      setFormulas(formulas.filter(f => !selectedIds.includes(f.id)));
+    confirm('Delete Formulas', `Are you sure you want to delete ${selectedIds.length} selected formulas and all their versions?`, () => {
+      const groupIdsToDelete = new Set(
+        formulas.filter(f => selectedIds.includes(f.id)).map(f => f.originalFormulaId || f.id)
+      );
+      setFormulas(formulas.filter(f => !groupIdsToDelete.has(f.originalFormulaId || f.id)));
       setSelectedIds([]);
       setIsSelectionMode(false);
     });
@@ -249,9 +264,10 @@ export default function FormulaList({ formulas, setFormulas, rawMaterials, setRa
     );
   };
 
-  const displayFormulas = useMemo(() => 
-    isCompareMode ? formulas : formulas.filter(f => !f.parentFormulaId),
-  [formulas, isCompareMode]);
+  const displayFormulas = useMemo(() => {
+    if (isCompareMode) return formulas;
+    return getLatestFormulas(formulas);
+  }, [formulas, isCompareMode]);
 
   const toggleAllSelection = () => {
     if (selectedIds.length === displayFormulas.length) {
@@ -601,11 +617,11 @@ export default function FormulaList({ formulas, setFormulas, rawMaterials, setRa
               </label>
               <div className="flex gap-2">
                 <input
-                  type="number"
+                  type="text" inputMode="decimal"
                   min="0"
                   step="0.1"
                   value={editingFormula.accordCapacity || ''}
-                  onChange={(e) => setEditingFormula({ ...editingFormula, accordCapacity: parseFloat(e.target.value) || 0 })}
+                  onChange={(e) => setEditingFormula({ ...editingFormula, accordCapacity: e.target.value })}
                   className="flex-1 px-3 py-2 border border-app-border bg-app-bg text-app-text rounded-md focus:ring-app-accent focus:border-app-accent"
                   placeholder="e.g., 100"
                 />
@@ -694,13 +710,11 @@ export default function FormulaList({ formulas, setFormulas, rawMaterials, setRa
                         </select>
                         <div className="relative w-32">
                           <input
-                            type="number"
-                            min="0"
-                            max="100"
-                            step="0.01"
+                            type="text"
+                            inputMode="decimal"
                             placeholder="0"
                             value={oil.percentage || ''}
-                            onChange={(e) => updateFragranceOil(oil.id, 'percentage', parseFloat(e.target.value) || 0)}
+                            onChange={(e) => updateFragranceOil(oil.id, 'percentage', e.target.value === '' ? 0 : e.target.value)}
                             className="w-full px-3 py-2 border border-app-border bg-app-bg text-app-text rounded-md focus:ring-app-accent focus:border-app-accent pr-8"
                           />
                           <span className="absolute right-3 top-2 text-app-muted">%</span>
@@ -728,13 +742,11 @@ export default function FormulaList({ formulas, setFormulas, rawMaterials, setRa
                     </div>
                     <div className="relative w-32">
                       <input
-                        type="number"
-                        min="0"
-                        max="100"
-                        step="0.01"
+                        type="text"
+                        inputMode="decimal"
                         placeholder="0"
                         value={editingFormula.fragranceOils[0]?.percentage || ''}
-                        onChange={(e) => updateFragranceOil(editingFormula.fragranceOils[0]?.id || '', 'percentage', parseFloat(e.target.value) || 0)}
+                        onChange={(e) => updateFragranceOil(editingFormula.fragranceOils[0]?.id || '', 'percentage', e.target.value === '' ? 0 : e.target.value)}
                         className="w-full px-3 py-2 border border-app-border bg-app-bg text-app-text rounded-md focus:ring-app-accent focus:border-app-accent pr-8"
                       />
                       <span className="absolute right-3 top-2 text-app-muted">%</span>
@@ -770,18 +782,17 @@ export default function FormulaList({ formulas, setFormulas, rawMaterials, setRa
                           className="flex-1 px-3 py-2 border border-app-border bg-app-bg text-app-text rounded-md focus:ring-app-accent focus:border-app-accent"
                         >
                           <option value="">Select Accord...</option>
-                          {formulas.filter(f => f.type === 'accord' && f.id !== editingFormula.id).map(f => (
+                          {getLatestFormulas(formulas).filter(f => f.type === 'accord' && f.id !== editingFormula.id).map(f => (
                             <option key={f.id} value={f.id}>{f.name}</option>
                           ))}
                         </select>
                         <div className="w-24">
                           <input
-                            type="number"
-                            min="0"
-                            step="0.01"
+                            type="text"
+                            inputMode="decimal"
                             placeholder="0"
                             value={accordRef.amount || ''}
-                            onChange={(e) => updateAccord(accordRef.id, 'amount', parseFloat(e.target.value) || 0)}
+                            onChange={(e) => updateAccord(accordRef.id, 'amount', e.target.value === '' ? 0 : e.target.value)}
                             className="w-full px-3 py-2 border border-app-border bg-app-bg text-app-text rounded-md focus:ring-app-accent focus:border-app-accent"
                           />
                         </div>
@@ -853,12 +864,11 @@ export default function FormulaList({ formulas, setFormulas, rawMaterials, setRa
                       <>
                         <div className="w-24">
                           <input
-                            type="number"
-                            min="0"
-                            step="0.01"
+                            type="text"
+                            inputMode="decimal"
                             placeholder="0"
                             value={material.amount || ''}
-                            onChange={(e) => updateMaterial(material.id, 'amount', parseFloat(e.target.value) || 0)}
+                            onChange={(e) => updateMaterial(material.id, 'amount', e.target.value === '' ? 0 : e.target.value)}
                             className="w-full px-3 py-2 border border-app-border bg-app-bg text-app-text rounded-md focus:ring-app-accent focus:border-app-accent"
                           />
                         </div>
@@ -880,13 +890,11 @@ export default function FormulaList({ formulas, setFormulas, rawMaterials, setRa
                       <div className="flex items-center gap-2">
                         <div className="relative w-32">
                           <input
-                            type="number"
-                            min="0"
-                            max="100"
-                            step="0.01"
+                            type="text"
+                            inputMode="decimal"
                             placeholder="0"
                             value={material.percentage || ''}
-                            onChange={(e) => updateMaterial(material.id, 'percentage', parseFloat(e.target.value) || 0)}
+                            onChange={(e) => updateMaterial(material.id, 'percentage', e.target.value === '' ? 0 : e.target.value)}
                             className="w-full px-3 py-2 border border-app-border bg-app-bg text-app-text rounded-md focus:ring-app-accent focus:border-app-accent pr-8"
                           />
                           <span className="absolute right-3 top-2 text-app-muted">%</span>
@@ -955,15 +963,13 @@ export default function FormulaList({ formulas, setFormulas, rawMaterials, setRa
                       />
                       <div className="relative w-32">
                         <input
-                          type="number"
-                          min="0"
-                          max="100"
-                          step="0.01"
+                          type="text"
+                          inputMode="decimal"
                           placeholder="0"
                           value={isAutoCalc ? autoCalcValue : (alcohol.percentage || '')}
                           onChange={(e) => {
                             if (!isAutoCalc) {
-                              updateAlcohol(alcohol.id, 'percentage', parseFloat(e.target.value) || 0);
+                              updateAlcohol(alcohol.id, 'percentage', e.target.value === '' ? 0 : e.target.value);
                             }
                           }}
                           disabled={isAutoCalc}
@@ -1077,16 +1083,7 @@ if (viewState === 'detail' && selectedFormula) {
               <GitBranch size={18} />
               Branch
             </button>
-            {selectedFormula.version && (
-              <button
-                onClick={() => finalizeFormula(selectedFormula)}
-                className="flex items-center gap-2 bg-app-card border border-app-border text-app-text px-4 py-2 rounded-md hover:bg-app-bg transition-colors"
-                title="Remove versioning and make standalone"
-              >
-                <CheckSquare size={18} />
-                Finalize
-              </button>
-            )}
+
             <button
               onClick={() => deleteFormula(selectedFormula.id)}
               className="flex items-center gap-2 px-4 py-2 bg-app-card border border-red-500/20 text-red-600 rounded-md hover:bg-red-500/10 transition-colors"
@@ -1275,11 +1272,11 @@ if (viewState === 'history' && selectedFormula) {
                         <GitBranch size={18} />
                       </button>
                       <button
-                        onClick={() => finalizeFormula(v)}
-                        className="p-2 text-app-muted hover:text-app-accent hover:bg-app-accent/5 rounded-md transition-colors"
-                        title="Finalize as standalone formula"
+                        onClick={() => deleteFormulaVersion(v.id, !v.parentFormulaId)}
+                        className="p-2 text-app-muted hover:text-red-500 hover:bg-red-500/10 rounded-md transition-colors"
+                        title="Delete this version"
                       >
-                        <CheckSquare size={18} />
+                        <Trash2 size={18} />
                       </button>
                     </div>
                   </div>
@@ -1567,16 +1564,16 @@ if (viewState === 'compare' && compareIds.length === 2) {
           {isSelectionMode && (
             <button
               onClick={() => {
-                const totalFormulas = formulas.filter(f => f.type !== 'accord').length;
-                if (selectedIds.length === totalFormulas) {
+                const selectableFormulas = displayFormulas.filter(f => f.type !== 'accord');
+                if (selectedIds.length === selectableFormulas.length) {
                   setSelectedIds([]);
                 } else {
-                  setSelectedIds(formulas.filter(f => f.type !== 'accord').map(f => f.id));
+                  setSelectedIds(selectableFormulas.map(f => f.id));
                 }
               }}
               className="flex items-center gap-2 bg-app-card text-app-text px-4 py-2 rounded-md hover:bg-app-bg border border-app-border transition-colors shadow-sm whitespace-nowrap"
             >
-              {selectedIds.length === formulas.filter(f => f.type !== 'accord').length ? 'Deselect All' : 'Select All'}
+              {selectedIds.length === displayFormulas.filter(f => f.type !== 'accord').length ? 'Deselect All' : 'Select All'}
             </button>
           )}
           {isSelectionMode && (

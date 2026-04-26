@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Formula, Fragrance, RawMaterial, CalculatorHistoryEntry } from '../types';
 import { Save, Trash2, CheckSquare, HelpCircle, Zap, Calculator, History, Beaker } from 'lucide-react';
 import { useConfirm } from '../hooks/useConfirm';
+import { getLatestFormulas } from '../utils/formulaUtils';
 import TutorialModal from './TutorialModal';
 
 interface Props {
@@ -153,7 +154,7 @@ export default function BlendCalculator({ formulas, fragrances, rawMaterials = [
               className="w-full px-3 py-2 bg-app-bg border border-app-border text-app-text rounded-md focus:ring-app-accent focus:border-app-accent"
             >
               <option value="">-- Choose a Formula --</option>
-              {formulas.map((f) => (
+              {getLatestFormulas(formulas).map((f) => (
                 <option key={f.id} value={f.id}>
                   {f.name} {f.version ? `(Mod ${f.version})` : ''} {f.isHybrid ? '(Hybrid)' : ''}
                 </option>

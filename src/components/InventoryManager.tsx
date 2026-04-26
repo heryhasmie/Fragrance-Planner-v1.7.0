@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useDeferredValue } from 'react';
-import { Package, Plus, Search, ChevronRight, ChevronDown, History, Trash2, Edit2, ArrowUpRight, ArrowDownLeft, Info, Box, X, HelpCircle, Layers } from 'lucide-react';
+import { Package, Plus, Search, ChevronRight, ChevronDown, History, Trash2, Edit2, ArrowUpRight, ArrowDownLeft, Info, Box, X, HelpCircle, Layers, CheckSquare } from 'lucide-react';
 import { InventoryItem, InventoryContainer, InventoryLog, RawMaterial, Equipment, Fragrance } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { useConfirm } from '../hooks/useConfirm';
@@ -28,6 +28,8 @@ export default function InventoryManager({ inventory, setInventory, rawMaterials
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isLogModalOpen, setIsLogModalOpen] = useState(false);
   const [showTutorial, setShowTutorial] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
   const { confirm, ConfirmModal } = useConfirm();
 
   // Stock Update Modal State
@@ -135,7 +137,25 @@ export default function InventoryManager({ inventory, setInventory, rawMaterials
     confirm('Delete Inventory Item', 'Are you sure you want to delete this entire inventory item? This will remove all containers and history.', () => {
       setInventory(inventory.filter(item => item.id !== id));
       if (selectedItem?.id === id) setSelectedItem(null);
+      setSelectedIds(selectedIds.filter(selectedId => selectedId !== id));
     }, 'Delete', 'danger');
+  };
+
+  const deleteSelectedItems = () => {
+    confirm('Delete Items', `Are you sure you want to delete ${selectedIds.length} selected items?`, () => {
+      setInventory(inventory.filter(item => !selectedIds.includes(item.id)));
+      if (selectedItem && selectedIds.includes(selectedItem.id)) {
+        setSelectedItem(null);
+      }
+      setSelectedIds([]);
+      setIsSelectionMode(false);
+    }, 'Delete All', 'danger');
+  };
+
+  const toggleSelection = (id: string) => {
+    setSelectedIds(prev => 
+      prev.includes(id) ? prev.filter(selectedId => selectedId !== id) : [...prev, id]
+    );
   };
 
   const openStockUpdate = (itemId: string, containerId: string, delta: number) => {
@@ -304,10 +324,67 @@ export default function InventoryManager({ inventory, setInventory, rawMaterials
 
       {/* Inventory List */}
       <div className="bg-app-card rounded-xl border border-app-border overflow-hidden">
+        {/* Action Bar (When selected) */}
+        <AnimatePresence>
+          {isSelectionMode && selectedIds.length > 0 && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="flex justify-between items-center p-3 bg-app-accent/10 border-b border-app-accent/20"
+            >
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-sm font-bold text-app-accent pr-4">
+                  {selectedIds.length} items selected
+                </span>
+                <button
+                  onClick={deleteSelectedItems}
+                  className="flex items-center gap-2 bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-md transition-colors text-sm font-medium"
+                >
+                  <Trash2 size={14} />
+                  Delete Selected
+                </button>
+              </div>
+              <button
+                onClick={() => {
+                  setSelectedIds([]);
+                  setIsSelectionMode(false);
+                }}
+                className="p-1 text-app-accent hover:bg-app-accent/20 rounded-md transition-colors"
+                title="Cancel Selection"
+              >
+                <X size={18} />
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-app-border bg-app-bg/50">
+                <th className="p-4 w-12">
+                  <button
+                    onClick={() => {
+                      if (!isSelectionMode) {
+                        setIsSelectionMode(true);
+                        setSelectedIds(filteredInventory.map(i => i.id));
+                      } else {
+                        if (selectedIds.length === filteredInventory.length) {
+                          setSelectedIds([]);
+                        } else {
+                          setSelectedIds(filteredInventory.map(i => i.id));
+                        }
+                      }
+                    }}
+                    className={`w-5 h-5 rounded flex items-center justify-center border transition-colors ${
+                      isSelectionMode && selectedIds.length > 0
+                        ? 'bg-app-accent border-app-accent'
+                        : 'border-app-border hover:bg-app-bg/50'
+                    }`}
+                  >
+                    <CheckSquare size={14} className={isSelectionMode && selectedIds.length > 0 ? 'text-white' : 'text-transparent'} />
+                  </button>
+                </th>
                 <th className="p-4 text-xs font-bold text-app-muted uppercase tracking-wider">Item Name</th>
                 <th className="p-4 text-xs font-bold text-app-muted uppercase tracking-wider">Type</th>
                 <th className="p-4 text-xs font-bold text-app-muted uppercase tracking-wider text-right">Total Stock</th>
@@ -319,9 +396,30 @@ export default function InventoryManager({ inventory, setInventory, rawMaterials
               {filteredInventory.map(item => (
                 <tr 
                   key={item.id}
-                  onClick={() => setSelectedItem(item)}
-                  className="border-b border-app-border hover:bg-app-bg/50 cursor-pointer transition-colors group"
+                  onClick={(e) => {
+                    if (isSelectionMode) {
+                      toggleSelection(item.id);
+                    } else {
+                      setSelectedItem(item);
+                    }
+                  }}
+                  className={`border-b border-app-border hover:bg-app-bg/50 cursor-pointer transition-colors group ${
+                    selectedIds.includes(item.id) ? 'bg-app-accent/5' : ''
+                  }`}
                 >
+                  <td className="p-4" onClick={(e) => {
+                    e.stopPropagation();
+                    setIsSelectionMode(true);
+                    toggleSelection(item.id);
+                  }}>
+                    <div className={`w-5 h-5 rounded flex items-center justify-center border transition-colors ${
+                      selectedIds.includes(item.id)
+                        ? 'bg-app-accent border-app-accent'
+                        : 'border-app-border bg-app-bg group-hover:bg-app-bg/50'
+                    }`}>
+                      <CheckSquare size={14} className={selectedIds.includes(item.id) ? 'text-white' : 'text-transparent'} />
+                    </div>
+                  </td>
                   <td className="p-4">
                     <span className="font-bold text-app-text group-hover:text-app-accent transition-colors">{item.name}</span>
                   </td>
@@ -359,7 +457,7 @@ export default function InventoryManager({ inventory, setInventory, rawMaterials
               ))}
               {filteredInventory.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="p-8 text-center text-app-muted">
+                  <td colSpan={6} className="p-8 text-center text-app-muted">
                     No inventory items found.
                   </td>
                 </tr>

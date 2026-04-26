@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Trash2, Plus, Save, X, ChevronLeft, Edit2, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Copy, CheckSquare, HelpCircle, LayoutList, Sigma, ListChecks, ShoppingBag, Package, ArrowDownLeft, ArrowUpRight, RefreshCw, Move } from 'lucide-react';
 import { Formula, Fragrance, PlannedBatch, BlendEntry, RawMaterial, InventoryItem, InventoryLog, InventoryContainer, PriceEntry } from '../types';
 import { useConfirm } from '../hooks/useConfirm';
+import { getLatestFormulas } from '../utils/formulaUtils';
 import TutorialModal from './TutorialModal';
 
 interface Props {
@@ -955,7 +956,7 @@ export default function BlendPlanner({ formulas = [], fragrances = [], setFragra
                           className="w-full px-3 py-2 bg-app-card border border-app-border text-app-text rounded-md focus:ring-app-accent focus:border-app-accent text-sm"
                         >
                           <option value="">Select Formula/Accord...</option>
-                          {formulas.map(f => <option key={f.id} value={f.id}>{f.name} {f.version ? `(Mod ${f.version})` : ''}</option>)}
+                          {getLatestFormulas(formulas).map(f => <option key={f.id} value={f.id}>{f.name} {f.version ? `(Mod ${f.version})` : ''}</option>)}
                         </select>
                       </div>
                       <div>
